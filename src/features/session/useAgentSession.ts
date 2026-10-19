@@ -114,6 +114,7 @@ export function useAgentSession(options: AgentSessionOptions = {}) {
   const [flash, setFlash] = useState<{ text: string; variant: 'error' | 'ok' } | null>(null)
   const [canvasHydrated, setCanvasHydrated] = useState(!loadCanvas)
   const [bootstrapped, setBootstrapped] = useState(false)
+  const [workspaceSwitching, setWorkspaceSwitching] = useState(false)
   const composerFocusRef = useRef<ComposerHandle | null>(null)
   const busyRef = useRef(false)
   const canvasRevisionRef = useRef(1)
@@ -232,13 +233,27 @@ export function useAgentSession(options: AgentSessionOptions = {}) {
   }, [refreshBackend])
 
   useEffect(() => {
-    if (!loadCanvas) {
-      setCanvasHydrated(true)
-      return
-    }
+    if (!loadCanvas) return
+    let cancelled = false
     setCanvasHydrated(false)
-    void refreshBackend()
-  }, [loadCanvas, refreshBackend])
+    void (async () => {
+      try {
+        const canvasData = await fetchCanvas()
+        if (cancelled) return
+        setCanvas(canvasData.canvas)
+        canvasRevisionRef.current = canvasData.canvas.revision ?? 1
+        mergeModeRef.current = canvasData.mergeMode
+        setCanvasMergeMode(canvasData.mergeMode)
+      } catch {
+        /* keep prior canvas */
+      } finally {
+        if (!cancelled) setCanvasHydrated(true)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [clientSession.workspaceId, loadCanvas])
 
   useEffect(() => {
     if (busy || offline) return
@@ -363,18 +378,16 @@ export function useAgentSession(options: AgentSessionOptions = {}) {
     (workspaceId: string, slug?: string) => {
       void (async () => {
         const prevId = loadClientSession().workspaceId
-        if (prevId !== workspaceId) {
-          snapshotWorkspaceUi(prevId, {
-            messages: messagesRef.current,
-            composerDraft: '',
-            trace: traceRef.current,
-          })
-          if (loadCanvas) {
-            setCanvas(EMPTY_CANVAS)
-            canvasRevisionRef.current = 1
-            setCanvasHydrated(false)
-          }
+        if (prevId === workspaceId) {
+          if (slug) localStorage.setItem(LAST_SPACE_SLUG_KEY, slug)
+          return
         }
+        setWorkspaceSwitching(true)
+        snapshotWorkspaceUi(prevId, {
+          messages: messagesRef.current,
+          composerDraft: '',
+          trace: traceRef.current,
+        })
         const restored = restoreWorkspaceUi(workspaceId)
         const next = { ...loadClientSession(), workspaceId, agentId: '' }
         saveClientSession(next)
@@ -382,10 +395,14 @@ export function useAgentSession(options: AgentSessionOptions = {}) {
         if (slug) localStorage.setItem(LAST_SPACE_SLUG_KEY, slug)
         setMessages(restored?.messages ?? [])
         setTrace(restored?.trace ?? [])
-        await refreshBackend()
+        try {
+          await refreshBackend()
+        } finally {
+          setWorkspaceSwitching(false)
+        }
       })()
     },
-    [refreshBackend, loadCanvas],
+    [refreshBackend],
   )
 
   const selectWorkspace = useCallback(
@@ -507,5 +524,6 @@ export function useAgentSession(options: AgentSessionOptions = {}) {
     showFlash,
     clearFlash,
     switchWorkspace,
+    workspaceSwitching,
   }
 }

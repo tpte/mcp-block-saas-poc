@@ -267,6 +267,17 @@ export async function fetchWorkspaces(): Promise<{ workspaces: Workspace[] }> {
   return res.json()
 }
 
+export async function createWorkspace(input: { name: string; slug: string }) {
+  const res = await apiFetch('/api/workspaces', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  })
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error((json as { error?: string }).error ?? '建立工作區失敗')
+  return json as { workspace: Workspace; agent: { id: string } }
+}
+
 export async function fetchManifest(): Promise<{ manifest: WorkspaceManifest }> {
   const res = await apiFetch('/api/manifest')
   if (!res.ok) throw new Error('manifest failed')

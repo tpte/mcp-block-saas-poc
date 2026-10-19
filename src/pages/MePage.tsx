@@ -1,11 +1,13 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Button } from '../components/ui/button'
 import { useAgentSessionContext } from '../features/session/AgentSessionContext'
 import { LAST_SPACE_SLUG_KEY } from '../features/session/workspaceUiCache'
+import { WorkspaceCreateForm } from '../features/workspace/WorkspaceCreateForm'
 import { WorkspaceTeamPanel } from '../features/workspace/WorkspaceTeamPanel'
 
 export function MePage() {
+  const navigate = useNavigate()
   const session = useAgentSessionContext()
   const user = session.devUsers.find((u) => u.id === session.clientSession.userId)
   const [teamOpen, setTeamOpen] = useState(false)
@@ -87,20 +89,44 @@ export function MePage() {
         <div>
           <p className="mb-2 text-xs font-medium text-[var(--muted)]">工作區</p>
           <ul className="space-y-2 text-sm">
-            {session.workspaces.map((ws) => (
-              <li key={ws.id} className="flex items-center justify-between gap-3">
-                <span className="min-w-0 truncate">{ws.name}</span>
-                <span className="flex shrink-0 gap-3">
-                  <Link className="text-xs text-cyan-700 dark:text-cyan-400" to={`/w/${ws.slug}`}>
-                    開啟
-                  </Link>
-                  <Link className="text-xs text-[var(--muted)]" to={`/w/${ws.slug}/studio`}>
-                    進階調整
-                  </Link>
-                </span>
-              </li>
-            ))}
+            {session.workspaces.map((ws) => {
+              const active = ws.id === session.clientSession.workspaceId
+              return (
+                <li
+                  key={ws.id}
+                  className={`flex items-center justify-between gap-3 rounded-md px-2 py-1.5 ${active ? 'bg-[var(--line)]/30' : ''}`}
+                >
+                  <span className="min-w-0 truncate">
+                    {ws.name}
+                    {ws.isSample ? <span className="ml-1 text-[10px] text-[var(--muted)]">範例</span> : null}
+                    {active ? <span className="ml-1 text-[10px] text-[var(--muted)]">目前</span> : null}
+                  </span>
+                  <span className="flex shrink-0 gap-3">
+                    <button
+                      type="button"
+                      className="text-xs text-cyan-700 dark:text-cyan-400"
+                      onClick={() => {
+                        session.switchWorkspace(ws.id, ws.slug)
+                        navigate(`/w/${ws.slug}`)
+                      }}
+                    >
+                      開啟
+                    </button>
+                    <Link className="text-xs text-[var(--muted)]" to={`/w/${ws.slug}/studio`}>
+                      Studio
+                    </Link>
+                  </span>
+                </li>
+              )
+            })}
           </ul>
+          <WorkspaceCreateForm
+            onCreated={(workspace) => {
+              session.switchWorkspace(workspace.id, workspace.slug)
+              void session.refreshBackend()
+            }}
+            onFlash={session.showFlash}
+          />
         </div>
 
         <Link

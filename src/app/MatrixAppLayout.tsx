@@ -68,7 +68,7 @@ function MatrixAppInner() {
       showSpaceContext={Boolean(slug) && !isStudio}
     >
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <div key={location.pathname} className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <div className="matrix-viewport flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <Routes>
             <Route path="/" element={<HomeOrLastSpace />} />
             <Route path={`${legacyCompanyBasePath}/*`} element={<LegacyCompanySlugRedirect />} />
@@ -83,6 +83,7 @@ function MatrixAppInner() {
         <WorkspaceDock
           workspaces={session.workspaces}
           activeWorkspaceId={session.clientSession.workspaceId}
+          switching={session.workspaceSwitching}
           onSelect={(ws) => {
             session.switchWorkspace(ws.id, ws.slug)
             reloadCatalog()
@@ -108,8 +109,7 @@ function MatrixAppInner() {
 export function MatrixAppLayout() {
   const location = useLocation()
   const spaceMatch = matchPath('/w/:slug/*', location.pathname) ?? matchPath('/w/:slug', location.pathname)
-  const isStudio = location.pathname.includes('/studio')
-  const loadCanvas = Boolean(spaceMatch && !isStudio)
+  const loadCanvas = Boolean(spaceMatch)
 
   return (
     <AgentSessionProvider options={{ loadCanvas }}>
