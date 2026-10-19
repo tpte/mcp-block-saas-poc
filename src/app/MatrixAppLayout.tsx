@@ -32,6 +32,12 @@ function MatrixAppInner() {
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
 
   useEffect(() => {
+    const openPalette = () => setPaletteOpen(true)
+    window.addEventListener('matrix:open-command-palette', openPalette)
+    return () => window.removeEventListener('matrix:open-command-palette', openPalette)
+  }, [])
+
+  useEffect(() => {
     if (!session.platform.commandPaletteEnabled) return
     return installShortcutListener(session.platform, {
       openCommandPalette: () => setPaletteOpen(true),

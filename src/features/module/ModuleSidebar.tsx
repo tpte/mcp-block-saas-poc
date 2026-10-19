@@ -26,7 +26,7 @@ export function ModuleSidebar({
   const body = (
     <>
       <div className="mb-2 flex items-center justify-between">
-        <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">MODULE · MCP</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">模組</p>
         {onMobileClose ? (
           <button type="button" className="text-xs text-[var(--muted)] md:hidden" onClick={onMobileClose}>
             關閉
@@ -35,10 +35,10 @@ export function ModuleSidebar({
       </div>
       <nav className="min-h-0 flex-1 space-y-2 overflow-y-auto" aria-label="模組導航">
         {modulesLoading ? (
-          <p className="px-2 text-xs text-[var(--muted)]">載入 MODULE…</p>
+          <p className="px-2 text-xs text-[var(--muted)]">載入模組…</p>
         ) : modules.length === 0 ? (
           <div className="rounded-md border border-dashed border-[var(--line)] px-2 py-3 text-xs text-[var(--muted)]">
-            尚未啟用模組。到 Studio 設定 manifest 與 MCP。
+            尚未啟用模組。點上方「調整工作區」或快捷操作。
           </div>
         ) : (
           <ul className="space-y-0.5">

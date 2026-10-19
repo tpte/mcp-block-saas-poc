@@ -1,10 +1,18 @@
+import { useNavigate } from 'react-router-dom'
+import type { Workspace } from '../../../shared/domain.ts'
 import { PRODUCT_NAME, PRODUCT_SUBTITLE, PRODUCT_TAGLINE } from '../../../shared/product.ts'
+import { Button } from '../../components/ui/button'
 
 type Props = {
   workspaceName?: string
+  workspaces?: Workspace[]
 }
 
-export function MatrixHomeHero({ workspaceName }: Props) {
+export function MatrixHomeHero({ workspaceName, workspaces = [] }: Props) {
+  const navigate = useNavigate()
+  const company = workspaces.find((w) => w.slug === 'company')
+  const personal = workspaces.find((w) => w.slug === 'personal')
+
   return (
     <div className="relative flex min-h-0 flex-1 flex-col items-center justify-center overflow-hidden px-6 py-12">
       <div
@@ -26,8 +34,21 @@ export function MatrixHomeHero({ workspaceName }: Props) {
         <p className="mt-3 text-sm leading-relaxed text-[var(--muted)]">{PRODUCT_TAGLINE}</p>
         <p className="mt-4 text-sm leading-relaxed text-[var(--muted)]">
           {workspaceName ? `目前是「${workspaceName}」。` : ''}
-          選下方工作區：開發者工作台或營運後台範例，開始跟 Agent 對話。
+          選一個工作區開始：上方按鈕或底部 Dock。
         </p>
+        <div className="mt-8 flex flex-wrap justify-center gap-3">
+          {company ? (
+            <Button type="button" onClick={() => navigate(`/w/${company.slug}`)}>
+              進入營運後台範例
+            </Button>
+          ) : null}
+          {personal ? (
+            <Button type="button" variant="outline" onClick={() => navigate(`/w/${personal.slug}`)}>
+              開發者工作台
+            </Button>
+          ) : null}
+        </div>
+        <p className="mt-4 text-xs text-[var(--muted)]">在工作區內可用上方模組列、快捷操作（⌘K）執行日常任務。</p>
       </div>
     </div>
   )

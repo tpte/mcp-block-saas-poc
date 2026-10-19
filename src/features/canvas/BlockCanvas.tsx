@@ -22,6 +22,8 @@ type Props = {
   onAddTemplate?: (templateId: string) => void
   onSaveBlockProps?: (blockId: string, props: Record<string, unknown>) => void
   onDeleteBlock?: (blockId: string) => void
+  /** 空畫布時額外操作提示 */
+  opsHints?: string
 }
 
 const widthClass = {
@@ -45,6 +47,7 @@ export function BlockCanvas({
   onAddTemplate,
   onSaveBlockProps,
   onDeleteBlock,
+  opsHints,
 }: Props) {
   const [localExpanded, setLocalExpanded] = useState<UiBlock | null>(null)
   const overlayBlock = expandedBlock ?? localExpanded
@@ -72,6 +75,9 @@ export function BlockCanvas({
             在下方告訴 Agent 你想看什麼，它會把結果畫在這裡。
           </p>
         )}
+        {!canvasLoading && opsHints ? (
+          <p className="mt-3 max-w-md text-xs text-[var(--muted)]">{opsHints}</p>
+        ) : null}
         {!canvasLoading && platform.suggestionsEnabled && platform.composerPosition === 'bottom' ? (
           <p className="mt-4 text-xs text-[var(--muted)]">點下方建議，或直接輸入。</p>
         ) : null}

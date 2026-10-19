@@ -91,6 +91,7 @@ export const WORKSPACE_TEMPLATES: Record<WorkspaceTemplateId, WorkspaceTemplate>
           ...defaultPlatform(),
           title: '公司後台',
           subtitle: '由 MATRIX 與 Agent 共創 · 可隨時改 manifest',
+          modulePillsEnabled: true,
         },
       },
       deployments: [],

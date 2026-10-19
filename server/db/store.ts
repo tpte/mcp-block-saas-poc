@@ -22,7 +22,7 @@ const LEGACY_WORKSPACE_ID = 'ws-hiyen'
 const COMPANY_WORKSPACE_ID = 'ws-company'
 const LEGACY_AGENT_ID = 'agent-hiyen-personal'
 const COMPANY_AGENT_ID = 'agent-company-copilot'
-const BRANDING_VERSION = 2
+const BRANDING_VERSION = 3
 
 const COMPANY_AGENT_PROMPT =
   '你是此工作區的營運後台夥伴。使用者可能不懂程式；用 builder Skills 與 RAG 引導（資料源、模組、畫布），模板只在使用者要還原時套用。繁中。'
@@ -181,7 +181,7 @@ function seed(): DbShape {
     workspaces: [wsPersonal, wsSample, wsCompany],
     agents: [orchestrator, workerHr, workerFinance, personalAgent, companyPersonal, samplePersonal],
     platformByWorkspace: {
-      [wsPersonal.id]: defaultPlatform(),
+      [wsPersonal.id]: { ...defaultPlatform(), moduleSidebarEnabled: true },
       [wsSample.id]: {
         ...defaultPlatform(),
         title: '模組範例',
@@ -191,6 +191,7 @@ function seed(): DbShape {
         ...defaultPlatform(),
         title: '營運後台',
         subtitle: '公司模組與資料源 · Skills 引導',
+        modulePillsEnabled: true,
       },
     },
     mcpMounts: [],
@@ -304,6 +305,14 @@ function migrateLegacyBranding(db: DbShape): boolean {
       plat.title = '模組範例'
       plat.subtitle = '內建範例資料，用於體驗模組'
     }
+  }
+
+  const personalPlat = db.platformByWorkspace[db.workspaces.find((w) => w.slug === 'personal')?.id ?? '']
+  if (personalPlat) personalPlat.moduleSidebarEnabled = true
+
+  const companyId = db.workspaces.find((w) => w.slug === 'company')?.id
+  if (companyId && db.platformByWorkspace[companyId]) {
+    db.platformByWorkspace[companyId].modulePillsEnabled = true
   }
 
   db.brandingVersion = BRANDING_VERSION
