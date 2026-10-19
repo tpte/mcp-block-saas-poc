@@ -1,12 +1,44 @@
 @import 'tailwindcss';
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
+  --bg: #f1f5f9;
+  --fg: #0f172a;
+  --card: #ffffff;
+  --muted: #64748b;
+  --line: #e2e8f0;
   font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
-  color: #0f172a;
-  background: #f8fafc;
+  color: var(--fg);
+  background: var(--bg);
+  color-scheme: light;
+}
+
+.dark {
+  --bg: #0b1220;
+  --fg: #e5e7eb;
+  --card: #111827;
+  --muted: #94a3b8;
+  --line: #1f2937;
+  color-scheme: dark;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
+  background: var(--bg);
+  color: var(--fg);
 }
+
+.dark .bg-white { background-color: var(--card); }
+.dark .bg-slate-50,
+.dark .bg-slate-100 { background-color: var(--bg); }
+.dark .text-slate-900,
+.dark .text-slate-800,
+.dark .text-slate-700 { color: var(--fg); }
+.dark .text-slate-600,
+.dark .text-slate-500,
+.dark .text-slate-400 { color: var(--muted); }
+.dark .border-slate-200,
+.dark .border-slate-100,
+.dark .border-slate-300 { border-color: var(--line); }

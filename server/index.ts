@@ -7,8 +7,10 @@ import {
   getOpenRouterModel,
   getProviderOnly,
 } from './env.ts'
-import { dashboardHome, invokeMcpTool, runKeywordAgent } from './mcp/handlers.ts'
+import { runKeywordAgent } from './mcp/handlers.ts'
+import { getPlatform, predictPrompts } from './mcp/platform.ts'
 import { tenant } from './mcp/store.ts'
+import { dispatchTool, finalizeTurn } from './mcp/turn.ts'
 import { runOpenRouterAgent, type ChatMessage } from './openrouter.ts'
 
 const app = new Hono()
@@ -27,10 +29,14 @@ app.get('/api/health', (c) => {
   })
 })
 
+app.get('/api/platform', (c) => {
+  return c.json({ platform: getPlatform(), suggestions: predictPrompts() })
+})
+
 app.post('/api/mcp/invoke', async (c) => {
   const body = await c.req.json<{ tool: string; payload?: Record<string, unknown> }>()
-  const ui = invokeMcpTool(body.tool, body.payload)
-  return c.json({ ui })
+  const result = dispatchTool(body.tool, body.payload)
+  return c.json({ ui: result.ui, platform: getPlatform(), suggestions: predictPrompts() })
 })
 
 app.post('/api/agent/chat', async (c) => {
@@ -38,41 +44,49 @@ app.post('/api/agent/chat', async (c) => {
   const messages = body.messages ?? []
 
   try {
+    const lastUser = [...messages].reverse().find((m) => m.role === 'user')
+    const text = lastUser?.content || ''
+
     if (!getOpenRouterKey()) {
-      const lastUser = [...messages].reverse().find((m) => m.role === 'user')
-      const ui = runKeywordAgent(lastUser?.content || '')
+      const ui = runKeywordAgent(text)
+      const turn = finalizeTurn(text, ui)
       return c.json({
         mode: 'offline',
-        assistantMessage: '（離線演示）已依關鍵字路由至 mock MCP。',
-        ui,
+        assistantMessage: turn.platformOnly ? '已透過 platform MCP 更新外殼。' : '（離線演示）已依關鍵字路由。',
+        ui: turn.ui,
+        platform: turn.platform,
+        suggestions: turn.suggestions,
         provider: null,
         model: null,
       })
     }
 
     const result = await runOpenRouterAgent(messages)
+    const turn = finalizeTurn(text, result.ui)
     return c.json({
       mode: 'openrouter',
-      assistantMessage: result.assistantMessage,
-      ui: result.ui,
+      assistantMessage: turn.platformOnly ? '已透過 platform MCP 更新外殼。' : result.assistantMessage,
+      ui: turn.ui,
+      platform: turn.platform,
+      suggestions: turn.suggestions,
       provider: result.provider,
       model: result.model,
     })
   } catch (err) {
     const lastUser = [...messages].reverse().find((m) => m.role === 'user')
-    const ui = runKeywordAgent(lastUser?.content || '')
+    const text = lastUser?.content || ''
+    const ui = runKeywordAgent(text)
+    const turn = finalizeTurn(text, ui)
     return c.json({
       mode: 'fallback',
       assistantMessage: err instanceof Error ? err.message : 'Agent 失敗，已改用離線路由。',
-      ui,
+      ui: turn.ui,
+      platform: turn.platform,
+      suggestions: turn.suggestions,
       provider: null,
       model: getOpenRouterModel(),
     })
   }
-})
-
-app.get('/api/dashboard', (c) => {
-  return c.json({ ui: { action: 'RENDER', ui: dashboardHome() } })
 })
 
 const port = Number(process.env.PORT || 8787)

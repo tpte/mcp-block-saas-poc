@@ -1,6 +1,6 @@
 # Super MCP
 
-整頁智能畫布 + 底部對話。任何已掛載的 MCP 回傳 Block schema，前端就整頁重排。HR / 財務 / 業務只是示範 connector。
+整頁智能畫布 + 對話框。外殼（深色、對話框位置、下一句預測數量、標題、畫布寬度）由 `platform:patch` MCP 客製，跟業務資料同一條 Agent 路徑。預設預測 3 句，可說「預測改成 5 個」或「關掉預測提示」。
 
 OpenRouter：`deepseek/deepseek-v4.1-flash-1017`，釘 **Together**。
 

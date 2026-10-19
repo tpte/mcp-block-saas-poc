@@ -1,4 +1,7 @@
+import type { PlatformConfig } from '../../shared/platform.ts'
 import type { McpUiResponse } from '../types/ui.ts'
+
+export type { PlatformConfig }
 
 export type HealthInfo = {
   ok: boolean
@@ -15,14 +18,19 @@ export async function fetchHealth(): Promise<HealthInfo> {
   return res.json()
 }
 
-export async function invokeMcpTool(tool: string, payload?: Record<string, unknown>): Promise<McpUiResponse> {
+export async function fetchPlatform(): Promise<{ platform: PlatformConfig; suggestions: string[] }> {
+  const res = await fetch('/api/platform')
+  if (!res.ok) throw new Error('platform failed')
+  return res.json()
+}
+
+export async function invokeMcpTool(tool: string, payload?: Record<string, unknown>) {
   const res = await fetch('/api/mcp/invoke', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ tool, payload }),
   })
-  const data = await res.json()
-  return data.ui as McpUiResponse
+  return res.json() as Promise<{ ui: McpUiResponse | null; platform: PlatformConfig; suggestions: string[] }>
 }
 
 export async function sendAgentChat(messages: { role: 'user' | 'assistant'; content: string }[]) {
@@ -35,6 +43,8 @@ export async function sendAgentChat(messages: { role: 'user' | 'assistant'; cont
     mode: string
     assistantMessage: string
     ui: McpUiResponse | null
+    platform: PlatformConfig
+    suggestions: string[]
     provider: string | null
     model: string | null
   }>

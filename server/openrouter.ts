@@ -5,7 +5,8 @@ import {
   getProviderOnly,
   getSiteUrl,
 } from './env.ts'
-import { invokeMcpTool, MCP_TOOL_NAMES } from './mcp/handlers.ts'
+import { MCP_TOOL_NAMES } from './mcp/handlers.ts'
+import { dispatchTool, PLATFORM_TOOL } from './mcp/turn.ts'
 
 export type ChatMessage = {
   role: 'system' | 'user' | 'assistant' | 'tool'
@@ -13,14 +14,41 @@ export type ChatMessage = {
   tool_call_id?: string
 }
 
-const toolDefs = MCP_TOOL_NAMES.map((name) => ({
-  type: 'function' as const,
-  function: {
-    name,
-    description: `Invoke MCP tool ${name} and return UI blocks for the tenant workspace.`,
-    parameters: { type: 'object', properties: {}, additionalProperties: true },
+const toolDefs = [
+  ...MCP_TOOL_NAMES.map((name) => ({
+    type: 'function' as const,
+    function: {
+      name,
+      description: `Invoke MCP tool ${name} and return UI blocks for the canvas.`,
+      parameters: { type: 'object', properties: {}, additionalProperties: true },
+    },
+  })),
+  {
+    type: 'function' as const,
+    function: {
+      name: PLATFORM_TOOL,
+      description:
+        'MCP that customizes the shell itself: theme, composer position/width/placeholder, next-prompt count, header, canvas width. Does not replace canvas data.',
+      parameters: {
+        type: 'object',
+        properties: {
+          theme: { type: 'string', enum: ['light', 'dark'] },
+          composerPosition: { type: 'string', enum: ['bottom', 'top'] },
+          composerWidth: { type: 'string', enum: ['narrow', 'wide'] },
+          placeholder: { type: 'string' },
+          showHistory: { type: 'boolean' },
+          suggestionsEnabled: { type: 'boolean' },
+          suggestionCount: { type: 'number' },
+          title: { type: 'string' },
+          subtitle: { type: 'string' },
+          canvasMaxWidth: { type: 'string', enum: ['md', 'xl', 'full'] },
+          density: { type: 'string', enum: ['comfortable', 'compact'] },
+          showModelBadge: { type: 'boolean' },
+        },
+      },
+    },
   },
-}))
+]
 
 export async function runOpenRouterAgent(messages: ChatMessage[]) {
   const key = getOpenRouterKey()
@@ -28,10 +56,11 @@ export async function runOpenRouterAgent(messages: ChatMessage[]) {
 
   const system: ChatMessage = {
     role: 'system',
-    content: `你是 Super MCP 平台的 Orchestrator。平台不綁定特定公司產品，任何已掛載的 MCP 都能驅動整頁畫布。
-使用者用繁體中文描述想看的內容時，選擇最合適的 tool，前端會整頁重繪（圖表、表格、看板依 tool 回傳的 layout）。
-可用 tools：${MCP_TOOL_NAMES.join(', ')}。
-規則：一次只呼叫一個 tool；不要輸出 HTML；回覆用一句繁中說明畫布更新了什麼。`,
+    content: `你是 Super MCP 平台的 Orchestrator。畫布資料與平台外殼都透過 MCP 修改。
+看資料用業務 tools：${MCP_TOOL_NAMES.join(', ')}。
+改外殼（深色、對話框位置與寬度、下一句預測數量與開關、標題、畫布寬度）用 ${PLATFORM_TOOL}。
+若使用者同時要看資料又要改外殼，兩個 tool 都要呼叫。
+不要輸出 HTML。回覆用一句繁中。`,
   }
 
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -78,18 +107,16 @@ export async function runOpenRouterAgent(messages: ChatMessage[]) {
   const message = data.choices?.[0]?.message
   if (!message) throw new Error('OpenRouter empty response')
 
-  let ui = null as ReturnType<typeof invokeMcpTool> | null
-  const toolCalls = message.tool_calls ?? []
-
-  if (toolCalls.length > 0) {
-    const call = toolCalls[0]
+  let ui = null as ReturnType<typeof dispatchTool>['ui']
+  for (const call of message.tool_calls ?? []) {
     let payload: Record<string, unknown> | undefined
     try {
       payload = call.function.arguments ? JSON.parse(call.function.arguments) : undefined
     } catch {
       payload = undefined
     }
-    ui = invokeMcpTool(call.function.name, payload)
+    const result = dispatchTool(call.function.name, payload)
+    if (result.ui) ui = result.ui
   }
 
   return {
