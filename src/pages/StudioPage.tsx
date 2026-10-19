@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { useMediaQuery } from '../lib/useMediaQuery'
 import { BuilderHubPanel } from '../features/builder/BuilderHubPanel'
 import { fetchBuilderSetupContext } from '../mcp/client'
@@ -13,6 +13,7 @@ import { WorkspaceToolsDock, type WorkspaceToolTab } from '../features/workspace
 import { useModuleCatalog } from '../features/module/useModuleCatalog'
 
 export function StudioPage() {
+  const { slug = 'personal' } = useParams()
   const session = useAgentSessionContext()
   const isNarrow = useMediaQuery('(max-width: 767px)')
   const [builderOpen, setBuilderOpen] = useState(true)
@@ -56,8 +57,8 @@ export function StudioPage() {
           <p className="text-sm font-semibold">Studio</p>
           <p className="text-xs text-[var(--muted)]">MODULE（MCP）· BLOCK · manifest · 資料源</p>
         </div>
-        <Link to="/" className="text-xs text-cyan-700 hover:underline dark:text-cyan-400">
-          ← 回 MATRIX 主頁
+        <Link to={`/w/${slug}`} className="text-xs text-cyan-700 hover:underline dark:text-cyan-400">
+          ← 回 SPACE
         </Link>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">

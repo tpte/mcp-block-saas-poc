@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react'
 import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
-import type { Agent, Workspace } from '../../shared/domain.ts'
+import type { Agent } from '../../shared/domain.ts'
 import { PRODUCT_NOT_HIYEN_LABEL } from '../../shared/product.ts'
-import type { DevUser, HealthInfo, PlatformConfig, SessionCapabilities } from '../mcp/client'
+import type { HealthInfo, PlatformConfig, SessionCapabilities } from '../mcp/client'
 import { FlashBanner } from '../features/ui/FlashBanner'
 
 type Props = {
@@ -14,22 +14,17 @@ type Props = {
   agents: Agent[]
   activeAgentId: string
   onAgentChange: (agentId: string) => void
-  workspaces?: Workspace[]
-  activeWorkspaceId?: string
-  onWorkspaceChange?: (workspaceId: string) => void
-  devUsers?: DevUser[]
-  activeUserId?: string
-  onUserChange?: (userId: string) => void
   capabilities?: SessionCapabilities
   onOpenTeam?: () => void
   flash?: { text: string; variant: 'error' | 'ok' } | null
   onDismissFlash?: () => void
-  onToggleMobileNav?: () => void
-  showMobileNavButton?: boolean
   navHomeActive?: boolean
   navStudioActive?: boolean
+  navMeActive?: boolean
   onNavHome?: () => void
   onNavStudio?: () => void
+  onNavMe?: () => void
+  showSpaceContext?: boolean
   children: ReactNode
 }
 
@@ -41,22 +36,17 @@ export function AppShell({
   agents,
   activeAgentId,
   onAgentChange,
-  workspaces = [],
-  activeWorkspaceId,
-  onWorkspaceChange,
-  devUsers = [],
-  activeUserId,
-  onUserChange,
   capabilities,
   onOpenTeam,
   flash,
   onDismissFlash,
-  onToggleMobileNav,
-  showMobileNavButton,
   navHomeActive,
   navStudioActive,
+  navMeActive,
   onNavHome,
   onNavStudio,
+  onNavMe,
+  showSpaceContext,
   children,
 }: Props) {
   const apiUp = !offline && Boolean(health?.ok)
@@ -74,58 +64,36 @@ export function AppShell({
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <p className="truncate text-sm font-semibold tracking-tight">{platform.title}</p>
-            <Badge
-              className="hidden border border-[var(--line)] bg-transparent text-[var(--muted)] sm:inline-flex"
-              title="與 HIYEN MATRIX 產品線無關"
-            >
-              {PRODUCT_NOT_HIYEN_LABEL}
-            </Badge>
+            {showSpaceContext ? (
+              <Badge className="border border-[var(--line)] bg-transparent text-[10px] text-[var(--muted)]">
+                SPACE
+              </Badge>
+            ) : (
+              <Badge
+                className="hidden border border-[var(--line)] bg-transparent text-[var(--muted)] sm:inline-flex"
+                title="與 HIYEN MATRIX 產品線無關"
+              >
+                {PRODUCT_NOT_HIYEN_LABEL}
+              </Badge>
+            )}
           </div>
           <p className="hidden truncate text-xs text-[var(--muted)] sm:block">{platform.subtitle}</p>
         </div>
         <div className="-mx-1 flex max-w-full items-center gap-1.5 overflow-x-auto px-1 pb-0.5 md:mx-0 md:flex-wrap md:justify-end md:gap-2 md:overflow-visible md:pb-0">
           {onNavHome ? (
-            <Button
-              type="button"
-              size="sm"
-              variant={navHomeActive ? 'default' : 'outline'}
-              className="text-xs"
-              onClick={onNavHome}
-            >
-              主頁
+            <Button type="button" size="sm" variant={navHomeActive ? 'default' : 'outline'} className="text-xs" onClick={onNavHome}>
+              MATRIX
             </Button>
           ) : null}
-          {onNavStudio ? (
-            <Button
-              type="button"
-              size="sm"
-              variant={navStudioActive ? 'default' : 'outline'}
-              className="text-xs"
-              onClick={onNavStudio}
-            >
+          {onNavStudio && showSpaceContext ? (
+            <Button type="button" size="sm" variant={navStudioActive ? 'default' : 'outline'} className="text-xs" onClick={onNavStudio}>
               Studio
             </Button>
           ) : null}
-          {showMobileNavButton && onToggleMobileNav ? (
-            <Button type="button" size="sm" variant="outline" className="md:hidden" onClick={onToggleMobileNav}>
-              模組
+          {onNavMe ? (
+            <Button type="button" size="sm" variant={navMeActive ? 'default' : 'outline'} className="text-xs" onClick={onNavMe}>
+              我
             </Button>
-          ) : null}
-          {devUsers.length > 1 && onUserChange ? (
-            <label className="flex items-center gap-1 text-xs text-[var(--muted)]" title="PoC 切換身份測 RBAC">
-              使用者
-              <select
-                className="max-w-[8rem] rounded border border-[var(--line)] bg-[var(--card)] px-2 py-1 text-xs text-[var(--fg)]"
-                value={activeUserId}
-                onChange={(e) => onUserChange(e.target.value)}
-              >
-                {devUsers.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.displayName}
-                  </option>
-                ))}
-              </select>
-            </label>
           ) : null}
           {capabilities ? (
             <Badge className="border border-[var(--line)] bg-transparent text-[var(--muted)]" title="工作區角色">
@@ -137,25 +105,7 @@ export function AppShell({
               團隊
             </Button>
           ) : null}
-          {workspaces.length > 0 && onWorkspaceChange ? (
-            <label className="flex items-center gap-1 text-xs text-[var(--muted)]">
-              工作區
-              <select
-                className="rounded border border-[var(--line)] bg-[var(--card)] px-2 py-1 text-xs text-[var(--fg)]"
-                value={activeWorkspaceId ?? health?.session?.workspaceId}
-                onChange={(e) => onWorkspaceChange(e.target.value)}
-              >
-                {workspaces.map((w) => (
-                  <option key={w.id} value={w.id}>
-                    {w.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ) : health?.session ? (
-            <Badge>{health.session.workspaceName}{health.session.workspaceSample ? ' · Sample' : ''}</Badge>
-          ) : null}
-          {agents.length > 0 ? (
+          {showSpaceContext && agents.length > 0 ? (
             <label className="flex items-center gap-1 text-xs text-[var(--muted)]">
               Agent
               <select
@@ -187,11 +137,7 @@ export function AppShell({
           {health.persistence.hint}
         </div>
       ) : null}
-      <FlashBanner
-        message={flash?.text ?? null}
-        variant={flash?.variant}
-        onDismiss={() => onDismissFlash?.()}
-      />
+      <FlashBanner message={flash?.text ?? null} variant={flash?.variant} onDismiss={() => onDismissFlash?.()} />
       {children}
     </div>
   )

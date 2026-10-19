@@ -60,10 +60,10 @@ try {
   const modules = await get('/api/modules')
   checks.push(['modules list', (modules.modules?.length ?? 0) >= 2])
 
-  const modCanvas = await get('/api/modules/hr/canvas')
-  checks.push(['module canvas', modCanvas.canvas && Array.isArray(modCanvas.canvas.blocks)])
+  const modCanvas = await get('/api/canvas')
+  checks.push(['workspace canvas', modCanvas.canvas && Array.isArray(modCanvas.canvas.blocks)])
 
-  const putCanvas = await fetch(`${base}/api/modules/hr/canvas`, {
+  const putCanvas = await fetch(`${base}/api/canvas`, {
     method: 'PUT',
     headers: { ...headers, 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -75,7 +75,7 @@ try {
     }),
   })
   const putJson = await putCanvas.json().catch(() => ({}))
-  checks.push(['module canvas save', putCanvas.ok && putJson.canvas?.revision >= 1])
+  checks.push(['workspace canvas save', putCanvas.ok && putJson.canvas?.revision >= 1])
 
   const failed = checks.filter(([, ok]) => !ok)
   for (const [name, ok] of checks) {

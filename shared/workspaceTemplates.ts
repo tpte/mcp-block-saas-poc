@@ -9,7 +9,7 @@ function defaultPlatform(): PlatformConfig {
     composerPosition: 'bottom',
     composerWidth: 'narrow',
     placeholder: '跟 Agent 說你想看什麼…',
-    showHistory: true,
+    showHistory: false,
     suggestionsEnabled: true,
     suggestionCount: 3,
     title: PRODUCT_NAME,
@@ -17,7 +17,7 @@ function defaultPlatform(): PlatformConfig {
     canvasMaxWidth: 'xl',
     density: 'comfortable',
     showModelBadge: true,
-    moduleSidebarEnabled: true,
+    moduleSidebarEnabled: false,
     modulePillsEnabled: false,
     commandPaletteEnabled: true,
     showToolTrace: true,
@@ -26,7 +26,7 @@ function defaultPlatform(): PlatformConfig {
   }
 }
 
-export type WorkspaceTemplateId = 'blank-custom' | 'hiyen-starter' | 'erp-demo'
+export type WorkspaceTemplateId = 'blank-custom' | 'hiyen-starter' | 'erp-demo' | 'dev-ide'
 
 export type WorkspaceTemplate = {
   id: WorkspaceTemplateId
@@ -86,6 +86,7 @@ export const WORKSPACE_TEMPLATES: Record<WorkspaceTemplateId, WorkspaceTemplate>
       ],
       ui: {
         ...baseUi,
+        spaceProfile: 'admin',
         platform: {
           ...defaultPlatform(),
           title: '公司後台',
@@ -136,6 +137,32 @@ export const WORKSPACE_TEMPLATES: Record<WorkspaceTemplateId, WorkspaceTemplate>
           ...defaultPlatform(),
           title: '示範 ERP',
           subtitle: 'Sample 資料，可還原後再客製',
+        },
+      },
+      deployments: [],
+      customMcpMounts: [],
+      canvasMergeMode: 'merge',
+    },
+  },
+  'dev-ide': {
+    id: 'dev-ide',
+    label: '開發 IDE SPACE',
+    description: 'IDE 雙欄：manifest 編輯 + Agent Block 預覽。',
+    manifest: {
+      version: 1,
+      displayName: 'Code SPACE',
+      modules: {
+        enabledCatalogIds: ['bridge:list', 'analytics:kpi_week'],
+      },
+      dataSources: [],
+      ui: {
+        ...baseUi,
+        spaceProfile: 'ide',
+        platform: {
+          ...defaultPlatform(),
+          title: 'Code SPACE',
+          subtitle: 'MATRIX · IDE 佈局 · MCP 協作',
+          placeholder: '描述要改的 manifest 或請 Agent 渲染 Block…',
         },
       },
       deployments: [],

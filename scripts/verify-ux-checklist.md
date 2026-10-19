@@ -4,15 +4,19 @@ Production: https://matrix-mcp-production.up.railway.app
 
 ## 路由
 
-1. **主頁 /**：科技 AI Hero + 底部 Composer；無 builder／地圖／工作台。
-2. **MODULE `/m/hr`**：側欄 MODULE 列表、Block 畫布、Composer；工具列僅此 MCP。
-3. **Studio `/studio`**：打造後台、地圖、工作台、debug；可從 header「Studio」進入。
+1. **MATRIX `/`**：極簡 Hero + 底部 **SPACE Dock**（無對話列表、無 Composer）。
+2. **SPACE `/w/:slug`**：整頁 Block + Composer；MODULE 不在 UI 分頁。
+3. **Studio `/w/:slug/studio`**：builder／manifest／資料源（僅該 SPACE）。
+4. **`/me`**：個人設定、Demo 身份、工作區連結。
 
-## 必測互動
+## Dock 切換（必測）
 
-1. **工作區切換**：個人 → HIYEN → Agent 下拉同步；MODULE 列表重載。
-2. **MODULE 隔離**：在 HR 頁加 block／invoke，切 Finance 頁 canvas 不同。
-3. **打造後台（Studio）**：SQLite、模組快選、Skills 摘要。
-4. **聊天**：主頁或 MODULE 頁 Composer 可送訊。
+1. 在 `/w/ws-hiyen` 送一則對話 → 切 Dock 到個人 SPACE → 再切回 HIYEN：**對話仍在**（快取）。
+2. 各 SPACE **canvas** 互不干擾；重新整理後 canvas 從 API 恢復。
 
-API：`npm run verify:builder`（含 `/api/modules` 與 module canvas）
+## 版面
+
+- HIYEN（`spaceProfile: admin`）：單欄 Block 堆疊。
+- 若套用 **dev-ide** 模板：IDE 雙欄（manifest + Block 預覽）。
+
+API：`npm run verify:builder`

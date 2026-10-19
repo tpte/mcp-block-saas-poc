@@ -29,7 +29,7 @@ export function MatrixHomeHero({ workspaceName }: Props) {
         </h1>
         <p className="mt-4 text-sm leading-relaxed text-[var(--muted)]">
           {workspaceName ? `${workspaceName} · ` : ''}
-          在下方跟 Agent 對話；模組頁面由 MCP 驅動 Block 畫布。建置 MODULE／BLOCK 請到 Studio。
+          從下方 Dock 進入 SPACE；在 SPACE 內用 MCP 協作渲染整頁 Block。建置請到該 SPACE 的 Studio。
         </p>
       </div>
     </div>

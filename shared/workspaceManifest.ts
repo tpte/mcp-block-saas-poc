@@ -21,6 +21,8 @@ export type GitBinding = {
   lastSyncAt?: string
 }
 
+export type SpaceProfile = 'default' | 'admin' | 'ide'
+
 export type DeploymentRecord = {
   id: string
   target: 'railway'
@@ -42,6 +44,7 @@ export type WorkspaceManifest = {
   ui: {
     platform: PlatformConfig
     defaultCanvasLayout: DefaultCanvasLayout
+    spaceProfile?: SpaceProfile
   }
   git?: GitBinding
   deployments: DeploymentRecord[]

@@ -25,6 +25,11 @@ import {
   type SessionMember,
 } from '../../mcp/client'
 import { loadClientSession, saveClientSession } from '../../session/apiHeaders.ts'
+import {
+  LAST_SPACE_SLUG_KEY,
+  restoreWorkspaceUi,
+  snapshotWorkspaceUi,
+} from './workspaceUiCache.ts'
 import type { CanvasPage } from '../../types/ui'
 import { applyUiResponse, EMPTY_CANVAS } from './applyUiResponse'
 import { summarizeCanvas } from './canvasSummary'
@@ -41,7 +46,7 @@ const FALLBACK_PLATFORM: PlatformConfig = {
   composerPosition: 'bottom',
   composerWidth: 'narrow',
   placeholder: '跟 Agent 說你想看什麼…',
-  showHistory: true,
+  showHistory: false,
   suggestionsEnabled: true,
   suggestionCount: 3,
   title: PRODUCT_NAME,
@@ -49,7 +54,7 @@ const FALLBACK_PLATFORM: PlatformConfig = {
   canvasMaxWidth: 'xl',
   density: 'comfortable',
   showModelBadge: true,
-  moduleSidebarEnabled: true,
+  moduleSidebarEnabled: false,
   modulePillsEnabled: false,
   commandPaletteEnabled: true,
   showToolTrace: true,
@@ -60,14 +65,12 @@ const FALLBACK_PLATFORM: PlatformConfig = {
 const TRACE_CAP = 50
 
 export type AgentSessionOptions = {
-  /** MODULE canvas id; null = MATRIX home (agent writes to `_home` only) */
-  canvasModuleId?: string | null
+  /** Load workspace canvas from API (SPACE pages) */
   loadCanvas?: boolean
 }
 
 export function useAgentSession(options: AgentSessionOptions = {}) {
-  const { canvasModuleId = null, loadCanvas = canvasModuleId !== null } = options
-  const canvasScope = canvasModuleId ?? '_home'
+  const { loadCanvas = false } = options
   const [health, setHealth] = useState<HealthInfo | null>(null)
   const [canvas, setCanvas] = useState<CanvasPage>(EMPTY_CANVAS)
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -101,6 +104,15 @@ export function useAgentSession(options: AgentSessionOptions = {}) {
   const busyRef = useRef(false)
   const canvasRevisionRef = useRef(1)
   const mergeModeRef = useRef<'merge' | 'replace'>('merge')
+  const messagesRef = useRef(messages)
+  const traceRef = useRef(trace)
+
+  useEffect(() => {
+    messagesRef.current = messages
+  }, [messages])
+  useEffect(() => {
+    traceRef.current = trace
+  }, [trace])
 
   const persistCanvas = useCallback(async (page: CanvasPage) => {
     try {
@@ -110,14 +122,13 @@ export function useAgentSession(options: AgentSessionOptions = {}) {
           revision: canvasRevisionRef.current,
         },
         canvasRevisionRef.current,
-        canvasScope,
       )
       canvasRevisionRef.current = saved.revision
       if (loadCanvas) setCanvas(saved)
     } catch {
       /* keep local */
     }
-  }, [canvasScope, loadCanvas])
+  }, [loadCanvas])
 
   const applyUi = useCallback(
     (prev: CanvasPage, ui: Parameters<typeof applyUiResponse>[1]) =>
@@ -167,7 +178,7 @@ export function useAgentSession(options: AgentSessionOptions = {}) {
         fetchHealth(),
         fetchPlatform(),
         fetchSession(),
-        loadCanvas ? fetchCanvas(canvasScope).catch(() => null) : Promise.resolve(null),
+        loadCanvas ? fetchCanvas().catch(() => null) : Promise.resolve(null),
         fetchWorkspaces().catch(() => ({ workspaces: [] as Workspace[] })),
       ])
       setHealth(healthData)
@@ -191,18 +202,22 @@ export function useAgentSession(options: AgentSessionOptions = {}) {
       setOffline(true)
       return false
     }
-  }, [canvasScope, loadCanvas])
+  }, [loadCanvas])
 
   useEffect(() => {
     void refreshBackend()
   }, [refreshBackend])
 
   useEffect(() => {
+    if (loadCanvas) void refreshBackend()
+  }, [loadCanvas, refreshBackend])
+
+  useEffect(() => {
     if (!loadCanvas) {
       setCanvas(EMPTY_CANVAS)
       canvasRevisionRef.current = 1
     }
-  }, [loadCanvas, canvasScope])
+  }, [loadCanvas])
 
   useEffect(() => {
     if (busy || offline) return
@@ -319,17 +334,34 @@ export function useAgentSession(options: AgentSessionOptions = {}) {
     void refreshBackend()
   }, [refreshBackend])
 
-  const selectWorkspace = useCallback(
-    (workspaceId: string) => {
-      const next = { ...loadClientSession(), workspaceId, agentId: '', activeModuleId: undefined }
+  const switchWorkspace = useCallback(
+    (workspaceId: string, slug?: string) => {
+      const prevId = loadClientSession().workspaceId
+      if (prevId !== workspaceId) {
+        snapshotWorkspaceUi(prevId, {
+          messages: messagesRef.current,
+          composerDraft: '',
+          trace: traceRef.current,
+        })
+      }
+      const restored = restoreWorkspaceUi(workspaceId)
+      const next = { ...loadClientSession(), workspaceId, agentId: '' }
       saveClientSession(next)
       setClientSession(next)
-      setAgents([])
-      setMessages([])
-      setCanvas(EMPTY_CANVAS)
+      if (slug) localStorage.setItem(LAST_SPACE_SLUG_KEY, slug)
+      setMessages(restored?.messages ?? [])
+      setTrace(restored?.trace ?? [])
       void refreshBackend()
     },
     [refreshBackend],
+  )
+
+  const selectWorkspace = useCallback(
+    (workspaceId: string) => {
+      const ws = workspaces.find((w) => w.id === workspaceId)
+      switchWorkspace(workspaceId, ws?.slug)
+    },
+    [switchWorkspace, workspaces],
   )
 
   const selectUser = useCallback(
@@ -351,7 +383,7 @@ export function useAgentSession(options: AgentSessionOptions = {}) {
   const updateBlockProps = useCallback(
     async (blockId: string, props: Record<string, unknown>) => {
       try {
-        const { canvas: saved } = await patchCanvasBlock(blockId, props, canvasScope)
+        const { canvas: saved } = await patchCanvasBlock(blockId, props)
         canvasRevisionRef.current = saved.revision
         setCanvas(saved)
         setOpsRefreshKey((k) => k + 1)
@@ -359,13 +391,13 @@ export function useAgentSession(options: AgentSessionOptions = {}) {
         showFlash(err instanceof Error ? err.message : '無法更新 Block')
       }
     },
-    [showFlash, canvasScope],
+    [showFlash],
   )
 
   const addBlockFromTemplate = useCallback(
     async (templateId: string) => {
       try {
-        const { canvas: saved, blockId } = await addCanvasBlock(templateId, undefined, canvasScope)
+        const { canvas: saved, blockId } = await addCanvasBlock(templateId)
         canvasRevisionRef.current = saved.revision
         setCanvas(saved)
         setFocusedBlockId(blockId)
@@ -374,13 +406,13 @@ export function useAgentSession(options: AgentSessionOptions = {}) {
         showFlash(err instanceof Error ? err.message : '無法新增 Block')
       }
     },
-    [showFlash, canvasScope],
+    [showFlash],
   )
 
   const removeBlock = useCallback(
     async (blockId: string) => {
       try {
-        const { canvas: saved } = await deleteCanvasBlock(blockId, canvasScope)
+        const { canvas: saved } = await deleteCanvasBlock(blockId)
         canvasRevisionRef.current = saved.revision
         setCanvas(saved)
         setOpsRefreshKey((k) => k + 1)
@@ -388,14 +420,8 @@ export function useAgentSession(options: AgentSessionOptions = {}) {
         showFlash(err instanceof Error ? err.message : '無法刪除 Block')
       }
     },
-    [showFlash, canvasScope],
+    [showFlash],
   )
-
-  const setActiveModule = useCallback((moduleId: string | undefined) => {
-    const next = { ...loadClientSession(), activeModuleId: moduleId }
-    saveClientSession(next)
-    setClientSession(next)
-  }, [])
 
   const focusAdjacentBlock = useCallback(
     (direction: 1 | -1) => {
@@ -445,7 +471,6 @@ export function useAgentSession(options: AgentSessionOptions = {}) {
     flash,
     showFlash,
     clearFlash,
-    setActiveModule,
-    canvasScope,
+    switchWorkspace,
   }
 }
