@@ -120,6 +120,26 @@ export function useAgentSession(options: AgentSessionOptions = {}) {
   useEffect(() => {
     messagesRef.current = messages
   }, [messages])
+
+  useEffect(() => {
+    const wsId = clientSession.workspaceId
+    if (!wsId) return
+    const restored = restoreWorkspaceUi(wsId)
+    if (restored?.messages.length) {
+      setMessages((prev) => (prev.length ? prev : restored.messages))
+      setTrace((prev) => (prev.length ? prev : restored.trace))
+    }
+  }, [clientSession.workspaceId])
+
+  useEffect(() => {
+    const wsId = clientSession.workspaceId
+    if (!wsId || messages.length === 0) return
+    snapshotWorkspaceUi(wsId, {
+      messages,
+      composerDraft: '',
+      trace: traceRef.current,
+    })
+  }, [messages, clientSession.workspaceId])
   useEffect(() => {
     traceRef.current = trace
   }, [trace])

@@ -20,6 +20,10 @@ export function MePage() {
           <p className="text-xs text-[var(--muted)]">使用者</p>
           <p className="font-medium">{user?.displayName ?? session.clientSession.userId}</p>
           <p className="text-xs text-[var(--muted)]">{user?.email}</p>
+          <p className="mt-1 text-xs text-[var(--muted)]">
+            此工作區角色：{session.capabilities.role}
+            {session.capabilities.canInvite ? ' · 可邀請成員' : ''}
+          </p>
         </div>
 
         {session.agents.length > 1 ? (

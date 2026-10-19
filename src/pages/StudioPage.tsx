@@ -53,6 +53,11 @@ export function StudioPage() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      {!canEditManifest ? (
+        <div className="shrink-0 border-b border-amber-300 bg-amber-50 px-4 py-2 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
+          目前是 {session.capabilities.role}，只能查看與請 Agent 說明；改模組與資料源需 admin。
+        </div>
+      ) : null}
       <div className="flex shrink-0 items-center justify-between border-b border-[var(--line)] px-4 py-2">
         <div>
           <p className="text-sm font-semibold">Studio</p>
