@@ -113,6 +113,7 @@ export function useAgentSession(options: AgentSessionOptions = {}) {
   const [devUsers, setDevUsers] = useState<DevUser[]>([])
   const [flash, setFlash] = useState<{ text: string; variant: 'error' | 'ok' } | null>(null)
   const [canvasHydrated, setCanvasHydrated] = useState(!loadCanvas)
+  const [bootstrapped, setBootstrapped] = useState(false)
   const composerFocusRef = useRef<ComposerHandle | null>(null)
   const busyRef = useRef(false)
   const canvasRevisionRef = useRef(1)
@@ -216,10 +217,12 @@ export function useAgentSession(options: AgentSessionOptions = {}) {
       saveClientSession(sessionData.session)
       setOffline(false)
       if (loadCanvas) setCanvasHydrated(true)
+      setBootstrapped(true)
       return true
     } catch {
       setOffline(true)
       if (loadCanvas) setCanvasHydrated(true)
+      setBootstrapped(true)
       return false
     }
   }, [loadCanvas])
@@ -467,6 +470,7 @@ export function useAgentSession(options: AgentSessionOptions = {}) {
     health,
     canvas,
     canvasHydrated,
+    bootstrapped,
     composerFocusRef,
     messages,
     platform,

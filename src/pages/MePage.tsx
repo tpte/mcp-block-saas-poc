@@ -10,6 +10,15 @@ export function MePage() {
   const user = session.devUsers.find((u) => u.id === session.clientSession.userId)
   const [teamOpen, setTeamOpen] = useState(false)
 
+  if (!session.bootstrapped && !session.offline) {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-4 py-12 text-center">
+        <p className="text-sm font-medium">載入帳戶與工作區…</p>
+        <p className="mt-1 text-xs text-[var(--muted)]">身份與成員資料來自伺服器 session。</p>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6 md:px-8">
       <h1 className="text-lg font-semibold">我</h1>

@@ -12,7 +12,8 @@
     "lint": "oxlint",
     "verify:builder": "node scripts/verify-builder.mjs",
     "verify:chat": "node scripts/verify-chat-lanes.mjs",
-    "verify:all": "npm run verify:chat && npm run verify:builder",
+    "verify:spa": "node scripts/verify-spa-routes.mjs",
+    "verify:all": "npm run verify:chat && npm run verify:builder && npm run verify:spa",
     "preview": "vite preview"
   },
   "dependencies": {
