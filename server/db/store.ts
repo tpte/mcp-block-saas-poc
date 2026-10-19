@@ -69,7 +69,7 @@ function seed(): DbShape {
     kind: 'orchestrator',
     systemPrompt: '你是工作區 orchestrator。可 delegate 給 HR、Finance worker。繁中。',
     policy: {
-      allowedToolPrefixes: ['agent:', 'canvas:', 'platform:', 'bridge:', 'notes:'],
+      allowedToolPrefixes: ['agent:', 'canvas:', 'platform:', 'bridge:', 'notes:', 'builder:'],
       allowedMcpServers: ['notes'],
       canDelegate: true,
     },
@@ -106,9 +106,22 @@ function seed(): DbShape {
     ownerUserId: userAlan.id,
     name: 'Personal Copilot',
     kind: 'personal',
-    systemPrompt: '你是 Alan 的個人助手，可存取工作區內允許的所有 tools。繁中。',
+    systemPrompt:
+      '你是 Alan 的個人助手，可存取工作區內允許的所有 tools。協助使用者用 builder Skills 客製後台。繁中。',
     policy: {
-      allowedToolPrefixes: ['hr:', 'finance:', 'sales:', 'inventory:', 'support:', 'analytics:', 'canvas:', 'platform:', 'bridge:', 'agent:'],
+      allowedToolPrefixes: [
+        'hr:',
+        'finance:',
+        'sales:',
+        'inventory:',
+        'support:',
+        'analytics:',
+        'canvas:',
+        'platform:',
+        'bridge:',
+        'agent:',
+        'builder:',
+      ],
       allowedMcpServers: ['notes'],
       canDelegate: true,
     },
@@ -137,7 +150,8 @@ function seed(): DbShape {
     id: 'agent-hiyen-personal',
     workspaceId: wsHiyen.id,
     name: 'HIYEN Copilot',
-    systemPrompt: '你是 HIYEN 工作區助手。繁中。',
+    systemPrompt:
+      '你是 HIYEN 工作區的客製化後台夥伴。使用者可能不懂程式；用 builder Skills 與 RAG 引導（資料源、模組、畫布），模板只在使用者要還原時套用。繁中。',
   }
 
   return {
@@ -194,6 +208,17 @@ function load(): DbShape {
     cache.platformByWorkspace = { ...fresh.platformByWorkspace, ...cache.platformByWorkspace }
     persist()
   }
+  let agentPolicyMigrated = false
+  for (const agent of cache.agents) {
+    if (
+      (agent.kind === 'personal' || agent.kind === 'orchestrator') &&
+      !agent.policy.allowedToolPrefixes.includes('builder:')
+    ) {
+      agent.policy.allowedToolPrefixes.push('builder:')
+      agentPolicyMigrated = true
+    }
+  }
+  if (agentPolicyMigrated) persist()
   return cache
 }
 
@@ -236,9 +261,22 @@ export function createWorkspace(input: { name: string; slug: string; ownerUserId
     ownerUserId: input.ownerUserId,
     name: 'Workspace Copilot',
     kind: 'personal',
-    systemPrompt: '你是工作區助手。繁中。',
+    systemPrompt:
+      '你是工作區助手，協助非工程使用者用 builder Skills 與 RAG 客製後台。繁中。',
     policy: {
-      allowedToolPrefixes: ['hr:', 'finance:', 'sales:', 'inventory:', 'support:', 'analytics:', 'canvas:', 'platform:', 'bridge:', 'agent:'],
+      allowedToolPrefixes: [
+        'hr:',
+        'finance:',
+        'sales:',
+        'inventory:',
+        'support:',
+        'analytics:',
+        'canvas:',
+        'platform:',
+        'bridge:',
+        'agent:',
+        'builder:',
+      ],
       allowedMcpServers: ['notes'],
       canDelegate: false,
     },

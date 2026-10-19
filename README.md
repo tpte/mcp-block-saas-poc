@@ -13,6 +13,7 @@ OpenRouter：`deepseek/deepseek-v4.1-flash-1017`，優先 **Together**。
 ## 平台願景（Phase 1–3）
 
 - **Workspace / User / Agent** 持久化於 `.data/platform.json`（dev headers：`X-User-Id`、`X-Workspace-Id`、`X-Agent-Id`）。
+- **客製化後台**：`builder/skills`（Agent 可讀的 SKILL 引導）+ `builder/knowledge`（RAG）+ 少數 `shared/workspaceTemplates.ts` 還原模板；UI「打造後台」面板與 `builder:*` MCP 工具。
 - **多 Agent**：orchestrator／worker／personal，tool **Policy** 強制；`agent:delegate` 調度 worker。
 - **Run 樹**：`/api/runs/:runId/tree` + UI **Agent 拓撲**。
 - **Block 市集**：`POST /api/blocks/packages` → approve → `compose` `kind: pkg`（見 [`notes/BLOCK_SDK.md`](notes/BLOCK_SDK.md)）。

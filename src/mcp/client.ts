@@ -366,6 +366,40 @@ export async function createWorkspaceInvite(
   return res.json() as Promise<{ invite: WorkspaceInviteRow; token: string }>
 }
 
+export type BuilderSetupContext = {
+  displayName: string
+  enabledModuleCount: number
+  dataSourceCount: number
+  gaps: string[]
+  suggestedSkillIds: string[]
+  availableCatalogIds: string[]
+  enabledCatalogIds: string[]
+}
+
+export type BuilderTemplateMeta = { id: string; label: string; description: string }
+
+export async function fetchBuilderSetupContext(): Promise<{ context: BuilderSetupContext }> {
+  const res = await apiFetch('/api/builder/setup-context')
+  await assertOk(res)
+  return res.json()
+}
+
+export async function fetchBuilderTemplates(): Promise<{ templates: BuilderTemplateMeta[] }> {
+  const res = await apiFetch('/api/builder/templates')
+  await assertOk(res)
+  return res.json()
+}
+
+export async function applyBuilderTemplate(templateId: string, confirm: boolean) {
+  const res = await apiFetch('/api/mcp/invoke', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tool: 'builder:apply_template', payload: { templateId, confirm } }),
+  })
+  await assertOk(res)
+  return res.json()
+}
+
 export async function acceptWorkspaceInvite(token: string) {
   const res = await apiFetch('/api/invites/accept', {
     method: 'POST',

@@ -16,6 +16,7 @@ import {
 import { buildMcpCatalog } from './mcp/catalog.ts'
 import { loadManifest } from './workspaces/manifest.ts'
 import { registerWorkspaceRoutes } from './workspaces/routes.ts'
+import { registerBuilderRoutes } from './builder/routes.ts'
 import { explainCapability } from './mcp/bridge.ts'
 import { mountStdioFromEnv } from './mcp/external/stdioMcp.ts'
 import { runKeywordAgent } from './mcp/handlers.ts'
@@ -47,6 +48,7 @@ app.use('/api/*', async (c, next) => {
 })
 
 registerWorkspaceRoutes(app)
+registerBuilderRoutes(app)
 
 app.get('/api/health', (c) => {
   const session = sessionFromHeaders(c)

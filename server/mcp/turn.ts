@@ -17,6 +17,7 @@ import {
   type PlatformConfig,
 } from './platform.ts'
 import { AGENT_DELEGATE, BRIDGE_CALL, BRIDGE_LIST, COMPOSE_TOOL, PLATFORM_TOOL } from './tools.ts'
+import { invokeBuilderTool } from '../builder/handlers.ts'
 
 export { PLATFORM_TOOL, BRIDGE_LIST, BRIDGE_CALL, COMPOSE_TOOL, AGENT_DELEGATE } from './tools.ts'
 
@@ -96,6 +97,10 @@ async function dispatchToolInner(name: string, payload?: Record<string, unknown>
     const tool = String(payload?.tool ?? '')
     const args = (payload?.args as Record<string, unknown> | undefined) ?? {}
     return callMountedMcp(server, tool, args)
+  }
+  if (name.startsWith('builder:')) {
+    const out = invokeBuilderTool(name, payload)
+    if (out) return out
   }
   noteTopic(topicFromTool(name))
   return invokeMcpTool(name, payload)

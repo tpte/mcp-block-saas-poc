@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useMediaQuery } from './lib/useMediaQuery'
 import { WorkspaceTeamPanel } from './features/workspace/WorkspaceTeamPanel'
+import { BuilderHubPanel } from './features/builder/BuilderHubPanel'
 import type { UiBlock } from './types/ui'
 import { BlockCanvas } from './features/canvas/BlockCanvas'
 import { ChatHistoryPanel } from './features/chat/ChatHistoryPanel'
@@ -30,6 +31,7 @@ export default function App() {
   const [workbenchOpen, setWorkbenchOpen] = useState(false)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [teamOpen, setTeamOpen] = useState(false)
+  const [builderOpen, setBuilderOpen] = useState(!isNarrow)
   const composerRef = useRef<ComposerHandle>(null)
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
@@ -43,6 +45,7 @@ export default function App() {
     if (isNarrow) {
       setMapOpen(false)
       setWorkbenchOpen(false)
+      setBuilderOpen(false)
     }
   }, [isNarrow])
 
@@ -152,6 +155,17 @@ export default function App() {
               onDeleteBlock={canEditCanvas ? (id) => void session.removeBlock(id) : undefined}
             />
           </main>
+          <BuilderHubPanel
+            open={builderOpen}
+            onToggle={() => setBuilderOpen((v) => !v)}
+            canManageManifest={canEditManifest}
+            onAskAgent={(prompt) => void session.sendMessage(prompt)}
+            onApplied={() => {
+              void session.refreshBackend()
+              reloadCatalog()
+            }}
+            onFlash={session.showFlash}
+          />
           <WorkspaceMapPanel open={mapOpen} onToggle={() => setMapOpen((v) => !v)} refreshKey={session.opsRefreshKey} />
           <WorkbenchPanel
             open={workbenchOpen}

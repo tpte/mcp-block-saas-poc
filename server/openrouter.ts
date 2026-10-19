@@ -19,6 +19,8 @@ import {
   PLATFORM_TOOL,
 } from './mcp/turn.ts'
 import type { ToolTraceEntry } from '../shared/trace.ts'
+import { BUILDER_TOOL_NAMES } from './builder/handlers.ts'
+import { builderSystemPromptAddon } from './builder/handlers.ts'
 
 export type ChatMessage = {
   role: 'system' | 'user' | 'assistant' | 'tool'
@@ -26,7 +28,45 @@ export type ChatMessage = {
   tool_call_id?: string
 }
 
+const builderToolDefs = BUILDER_TOOL_NAMES.map((name) => ({
+  type: 'function' as const,
+  function: {
+    name,
+    description:
+      name === 'builder:get_setup_context'
+        ? '取得工作區打造缺口、建議 Skills、模組現況（客製化後台引導）'
+        : name === 'builder:read_skill'
+          ? '讀取 builder/skills 下完整 SKILL.md 內容，依內容與使用者對話（非寫死 wizard）'
+          : name === 'builder:search_knowledge'
+            ? 'RAG 搜尋 builder 知識庫與 skills'
+            : name === 'builder:list_templates'
+              ? '列出可還原的少數 workspace 預設模板'
+              : name === 'builder:apply_template'
+                ? '還原模板；confirm=false 時只出確認 UI，true 才寫入 manifest'
+                : '在對話共識後更新 manifest（模組、資料源占位、displayName）',
+    parameters: {
+      type: 'object',
+      properties:
+        name === 'builder:read_skill'
+          ? { skillId: { type: 'string' } }
+          : name === 'builder:search_knowledge'
+            ? { query: { type: 'string' }, limit: { type: 'number' } }
+            : name === 'builder:apply_template'
+              ? { templateId: { type: 'string' }, confirm: { type: 'boolean' } }
+              : name === 'builder:update_manifest'
+                ? {
+                    enabledCatalogIds: { type: 'array', items: { type: 'string' } },
+                    displayName: { type: 'string' },
+                    appendDataSource: { type: 'object' },
+                  }
+                : {},
+      additionalProperties: true,
+    },
+  },
+}))
+
 const toolDefs = [
+  ...builderToolDefs,
   ...MCP_TOOL_NAMES.map((name) => ({
     type: 'function' as const,
     function: {
@@ -165,7 +205,7 @@ async function complete(
 你是 MATRIX 超級 Agent（個人 MCP 駕駛艙；與 HIYEN MATRIX 無關）。使用者看得到的每句話都必須經 ${COMPOSE_TOOL} 畫在畫布上，不要只回純文字。
 blocks.kind 只能是 title、points、chart、confirm、diff、document、plan。
 一般對話一定要有 title，加上至少 3 個 points，每點寫完整一句，不要只回標題或一個詞。問某個 MCP 能做什麼時，先講它的 tools 與限制，再給 confirm。要圖用 chart，要按鈕用 confirm，比對用 diff，長文用 document，步驟用 plan。
-需要資料時再呼叫：${MCP_TOOL_NAMES.join(', ')}。改外殼用 ${PLATFORM_TOOL}。外部 MCP 用 ${BRIDGE_LIST} / ${BRIDGE_CALL}。
+打造／客製化後台時用 builder:*（Skills+RAG 引導，模板只作還原）。需要資料時再呼叫：${MCP_TOOL_NAMES.join(', ')}。改外殼用 ${PLATFORM_TOOL}。外部 MCP 用 ${BRIDGE_LIST} / ${BRIDGE_CALL}。
 可同時呼叫資料 tool 與 ${COMPOSE_TOOL}。compose 的 blocks 依使用者問題決定種類與順序（先給最該先懂的一塊），可附 priority／role／collapsible。勿機械固定 alert→table。
 繁中。不要輸出 HTML。`,
   }
@@ -224,7 +264,12 @@ export async function runOpenRouterAgent(messages: ChatMessage[], agentId?: stri
   const activeId = agentId ?? getSession().activeAgentId
   const agent = getAgent(activeId)
   const tools = filterToolsForAgent(toolDefs, activeId)
-  const systemExtra = agent ? `${agent.systemPrompt}\nAgent: ${agent.name} (${agent.kind}).\n` : ''
+  let systemExtra = agent ? `${agent.systemPrompt}\nAgent: ${agent.name} (${agent.kind}).\n` : ''
+  try {
+    systemExtra += `\n${builderSystemPromptAddon()}\n`
+  } catch {
+    /* session may be unavailable in tests */
+  }
 
   const pinned = getProviderOnly()
   const attempts: ProviderPref[] = [
