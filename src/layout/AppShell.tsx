@@ -68,9 +68,19 @@ export function AppShell({
           ) : null}
         </div>
       </header>
+      {offline ? (
+        <div className="border-b border-amber-300 bg-amber-50 px-4 py-2 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
+          無法連上伺服器，每幾秒會自動重試。
+        </div>
+      ) : null}
       {health?.persistence?.ephemeral ? (
         <div className="border-b border-amber-300 bg-amber-50 px-4 py-2 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
           {health.persistence.hint}
+        </div>
+      ) : null}
+      {!offline && apiUp && !connected ? (
+        <div className="border-b border-[var(--line)] bg-[var(--card)] px-4 py-2 text-xs text-[var(--muted)]">
+          尚未設定對話模型，寒暄與查資料仍可用；搜尋與進階回答需 OpenRouter。
         </div>
       ) : null}
       <FlashBanner message={flash?.text ?? null} variant={flash?.variant} onDismiss={() => onDismissFlash?.()} />

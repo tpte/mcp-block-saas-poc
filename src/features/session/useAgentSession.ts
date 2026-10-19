@@ -204,15 +204,9 @@ export function useAgentSession(options: AgentSessionOptions = {}) {
   }, [refreshBackend])
 
   useEffect(() => {
-    if (loadCanvas) void refreshBackend()
+    if (!loadCanvas) return
+    void refreshBackend()
   }, [loadCanvas, refreshBackend])
-
-  useEffect(() => {
-    if (!loadCanvas) {
-      setCanvas(EMPTY_CANVAS)
-      canvasRevisionRef.current = 1
-    }
-  }, [loadCanvas])
 
   useEffect(() => {
     if (busy || offline) return
@@ -343,6 +337,10 @@ export function useAgentSession(options: AgentSessionOptions = {}) {
             composerDraft: '',
             trace: traceRef.current,
           })
+          if (loadCanvas) {
+            setCanvas(EMPTY_CANVAS)
+            canvasRevisionRef.current = 1
+          }
         }
         const restored = restoreWorkspaceUi(workspaceId)
         const next = { ...loadClientSession(), workspaceId, agentId: '' }
@@ -354,7 +352,7 @@ export function useAgentSession(options: AgentSessionOptions = {}) {
         await refreshBackend()
       })()
     },
-    [refreshBackend],
+    [refreshBackend, loadCanvas],
   )
 
   const selectWorkspace = useCallback(

@@ -67,20 +67,20 @@ function MatrixAppInner() {
           <Routes>
             <Route path="/" element={<HomeOrLastSpace />} />
             <Route
-              path="/w/:slug"
-              element={
-                <>
-                  <WorkspaceSlugSync />
-                  <SpacePage />
-                </>
-              }
-            />
-            <Route
               path="/w/:slug/studio"
               element={
                 <>
                   <WorkspaceSlugSync />
                   <StudioPage />
+                </>
+              }
+            />
+            <Route
+              path="/w/:slug"
+              element={
+                <>
+                  <WorkspaceSlugSync />
+                  <SpacePage />
                 </>
               }
             />
