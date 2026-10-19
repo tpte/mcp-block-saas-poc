@@ -1,12 +1,14 @@
 import { serve } from '@hono/node-server'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
+import { streamSSE } from 'hono/streaming'
 import {
   allowProviderFallbacks,
   getOpenRouterKey,
   getOpenRouterModel,
   getProviderOnly,
 } from './env.ts'
+import { explainCapability } from './mcp/bridge.ts'
 import { runKeywordAgent } from './mcp/handlers.ts'
 import { getPlatform, predictPrompts } from './mcp/platform.ts'
 import { tenant } from './mcp/store.ts'
@@ -42,55 +44,86 @@ app.post('/api/mcp/invoke', async (c) => {
 app.post('/api/agent/chat', async (c) => {
   const body = await c.req.json<{ messages: ChatMessage[] }>()
   const messages = body.messages ?? []
+  const lastUser = [...messages].reverse().find((m) => m.role === 'user')
+  const text = lastUser?.content || ''
 
-  try {
-    const lastUser = [...messages].reverse().find((m) => m.role === 'user')
-    const text = lastUser?.content || ''
+  return streamSSE(c, async (stream) => {
+    const status = (line: string) => stream.writeSSE({ event: 'status', data: JSON.stringify({ text: line }) })
+    const finish = (payload: Record<string, unknown>) =>
+      stream.writeSSE({ event: 'done', data: JSON.stringify(payload) })
 
-    if (!getOpenRouterKey()) {
-      const ui = runKeywordAgent(text)
-      const turn = finalizeTurn(text, ui)
-      return c.json({
-        mode: 'offline',
-        assistantMessage: turn.platformOnly ? '已透過 platform MCP 更新外殼。' : '（離線演示）已依關鍵字路由。',
+    await status('已收到問題')
+    const explained = explainCapability(text)
+    if (explained) {
+      await status('這題在問已掛載的 MCP，直接讀工具清單')
+      const turn = finalizeTurn(text, explained)
+      await status('正在把能力說明畫上畫布')
+      await finish({
+        mode: 'bridge',
+        assistantMessage: '已說明掛載的 MCP 能做什麼。',
         ui: turn.ui,
         platform: turn.platform,
         suggestions: turn.suggestions,
         provider: null,
         model: null,
       })
+      return
     }
 
-    const result = await runOpenRouterAgent(messages)
-    const turn = finalizeTurn(text, result.ui)
-    return c.json({
-      mode: 'openrouter',
-      assistantMessage: turn.platformOnly ? '已透過 platform MCP 更新外殼。' : result.assistantMessage,
-      ui: turn.ui,
-      platform: turn.platform,
-      suggestions: turn.suggestions,
-      provider: result.provider,
-      model: result.model,
-    })
-  } catch (err) {
-    const lastUser = [...messages].reverse().find((m) => m.role === 'user')
-    const text = lastUser?.content || ''
-    const ui = runKeywordAgent(text)
-    const turn = finalizeTurn(text, ui)
-    return c.json({
-      mode: 'fallback',
-      assistantMessage: turn.ui || turn.platformOnly
-        ? '模型暫時忙碌，已用本機 MCP 完成這一步。'
-        : err instanceof Error
-          ? err.message
-          : 'Agent 失敗，已改用離線路由。',
-      ui: turn.ui,
-      platform: turn.platform,
-      suggestions: turn.suggestions,
-      provider: null,
-      model: getOpenRouterModel(),
-    })
-  }
+    await status('正在交給模型')
+    let ticks = 0
+    const timer = setInterval(() => {
+      ticks += 1
+      void status(`模型仍在思考（${ticks} 秒）`)
+    }, 1000)
+
+    try {
+      if (!getOpenRouterKey()) {
+        clearInterval(timer)
+        await status('沒有 OpenRouter key，改走本機 MCP')
+        const turn = finalizeTurn(text, runKeywordAgent(text))
+        await finish({
+          mode: 'offline',
+          assistantMessage: '已用本機 MCP 回答。',
+          ui: turn.ui,
+          platform: turn.platform,
+          suggestions: turn.suggestions,
+          provider: null,
+          model: null,
+        })
+        return
+      }
+
+      const result = await runOpenRouterAgent(messages)
+      clearInterval(timer)
+      await status(result.provider ? `模型已回覆，上游是 ${result.provider}` : '模型已回覆')
+      const turn = finalizeTurn(text, result.ui)
+      await status('正在把回覆分塊畫上畫布')
+      await finish({
+        mode: 'openrouter',
+        assistantMessage: result.assistantMessage,
+        ui: turn.ui,
+        platform: turn.platform,
+        suggestions: turn.suggestions,
+        provider: result.provider,
+        model: result.model,
+      })
+    } catch (err) {
+      clearInterval(timer)
+      await status('模型沒有順利回完，改用本機 MCP')
+      const turn = finalizeTurn(text, runKeywordAgent(text))
+      await finish({
+        mode: 'fallback',
+        assistantMessage: '模型暫時忙碌，已用本機 MCP 完成這一步。',
+        ui: turn.ui,
+        platform: turn.platform,
+        suggestions: turn.suggestions,
+        provider: null,
+        model: getOpenRouterModel(),
+        error: err instanceof Error ? err.message : 'failed',
+      })
+    }
+  })
 })
 
 const port = Number(process.env.PORT || 8787)

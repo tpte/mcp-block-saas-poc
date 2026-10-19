@@ -1,5 +1,5 @@
 import type { McpUiResponse, UiBlock } from '../../shared/ui.ts'
-import { callMountedMcp, listMountedMcps } from './bridge.ts'
+import { callMountedMcp, explainCapability, listMountedMcps } from './bridge.ts'
 import { speechToBlocks } from './compose.ts'
 import {
   approveAllLeave,
@@ -349,7 +349,9 @@ export function invokeMcpTool(tool: string, _payload?: Record<string, unknown>):
 }
 
 export function runKeywordAgent(message: string): McpUiResponse {
-  const text = message.toLowerCase()
+  const text = message
+    .replace(/[\uFF01-\uFF5E]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0xfee0))
+    .toLowerCase()
   if (text.includes('財務') || text.includes('cashflow') || text.includes('現金') || text.includes('發票')) {
     return text.includes('發票') ? invokeMcpTool('finance:list_invoices') : invokeMcpTool('finance:get_cashflow')
   }
@@ -368,6 +370,8 @@ export function runKeywordAgent(message: string): McpUiResponse {
   if (text.includes('請假') || text.includes('員工') || text.includes('hr')) {
     return invokeMcpTool('hr:get_leave')
   }
+  const explained = explainCapability(text)
+  if (explained) return explained
   if (text.includes('外部') || text.includes('掛載') || text.includes('bridge') || text.includes('筆記') || text.includes('notes')) {
     return text.includes('讀') || text.includes('記事') || text.includes('notes')
       ? callMountedMcp('notes', 'notes:list')

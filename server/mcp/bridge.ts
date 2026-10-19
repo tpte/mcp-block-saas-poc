@@ -1,4 +1,5 @@
 import type { McpUiResponse, TableRow, UiBlock } from '../../shared/ui.ts'
+import { composeCanvas } from './compose.ts'
 import { sampleNotesMcp, type ExternalMcp } from './external/sampleNotes.ts'
 
 const mounts = new Map<string, ExternalMcp>()
@@ -8,6 +9,36 @@ export function mountExternalMcp(server: ExternalMcp) {
 }
 
 mountExternalMcp(sampleNotesMcp)
+
+export function explainCapability(raw: string): McpUiResponse | null {
+  const text = raw.replace(/[\uFF01-\uFF5E]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0xfee0))
+  if (!/(可以|能干|能做|幹嘛|幹麻|是什麼|用途|做什麼)/.test(text)) return null
+  if (!/notes|筆記|外部 mcp|掛載/i.test(text)) return null
+  const tools = [...mounts.values()].flatMap((server) =>
+    server.listTools().map((tool) => `${server.name} · ${tool.name}：${tool.description}`),
+  )
+  return composeCanvas({
+    blocks: [
+      { kind: 'title', text: '外部 notes MCP 可以做這些事' },
+      {
+        kind: 'points',
+        items: [
+          '它是掛在 Bridge 後面的外部 MCP，自己不會畫畫面，只回 JSON。',
+          ...tools,
+          'notes:list 會把現有記事交回來，Bridge 轉成表格。',
+          'notes:add 用 title、body 新增一則記事，再把整份清單交回來。',
+          '你問「可以幹麻」時不需要先把資料表整頁換掉，先看能力，再決定要不要讀。',
+        ],
+      },
+      {
+        kind: 'confirm',
+        title: '要現在讀出記事嗎？',
+        description: '按下去會呼叫 notes:list，結果一樣畫在這塊畫布上。',
+        actions: [{ label: '讀取 notes', mcpTool: 'bridge:call', payload: { server: 'notes', tool: 'notes:list' } }],
+      },
+    ],
+  })
+}
 
 export function listMountedMcps(): McpUiResponse {
   const rows: TableRow[] = []

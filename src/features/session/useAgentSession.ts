@@ -38,6 +38,7 @@ export function useAgentSession() {
     '改成深色模式',
   ])
   const [busy, setBusy] = useState(false)
+  const [trace, setTrace] = useState<string[]>([])
   const [lastProvider, setLastProvider] = useState<string | null>(null)
   const [offline, setOffline] = useState(false)
 
@@ -74,10 +75,11 @@ export function useAgentSession() {
       const trimmed = text.trim()
       if (!trimmed || busy) return
       setBusy(true)
+      setTrace([`已送出：${trimmed}`])
       const nextMessages: ChatMessage[] = [...messages, { role: 'user', content: trimmed }]
       setMessages(nextMessages)
       try {
-        const result = await sendAgentChat(nextMessages)
+        const result = await sendAgentChat(nextMessages, (line) => setTrace((prev) => [...prev, line]))
         setMessages((prev) => [...prev, { role: 'assistant', content: result.assistantMessage }])
         setLastProvider(result.provider)
         if (result.ui) setCanvas((prev) => applyUiResponse(prev, result.ui))
@@ -103,6 +105,7 @@ export function useAgentSession() {
     suggestions,
     busy,
     lastProvider,
+    trace,
     offline,
     sendMessage,
     runMcpInvoke,

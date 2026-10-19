@@ -20,6 +20,13 @@ export default function App() {
       offline={session.offline}
     >
       <main className={top ? 'min-h-0 flex-1 overflow-y-auto px-6 pb-8 pt-44' : 'min-h-0 flex-1 overflow-y-auto px-6 pb-48 pt-2'}>
+        {session.trace.length > 0 ? (
+          <ol className="mx-auto mb-4 w-full max-w-6xl space-y-1 text-xs text-[var(--muted)]">
+            {session.trace.map((line, index) => (
+              <li key={`${line}-${index}`}>{session.busy && index === session.trace.length - 1 ? `▸ ${line}` : line}</li>
+            ))}
+          </ol>
+        ) : null}
         <BlockCanvas
           canvas={session.canvas}
           platform={session.platform}

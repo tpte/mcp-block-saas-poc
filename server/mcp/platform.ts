@@ -35,11 +35,18 @@ export function noteTopic(topic: string) {
   lastTopic = topic
 }
 
-export function looksLikeData(text: string) {
-  return /請假|員工|財務|現金|發票|業務|pipeline|銷售|庫存|進銷存|客服|工單|報表|kpi|圖表|渠道|外部|掛載|bridge|筆記|notes/i.test(text)
+export function foldText(text: string) {
+  return text
+    .replace(/[\uFF01-\uFF5E]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0xfee0))
+    .toLowerCase()
 }
 
-export function interpretPlatform(text: string): Partial<PlatformConfig> | null {
+export function looksLikeData(text: string) {
+  return /請假|員工|財務|現金|發票|業務|pipeline|銷售|庫存|進銷存|客服|工單|報表|kpi|圖表|渠道|外部|掛載|bridge|筆記|notes/i.test(foldText(text))
+}
+
+export function interpretPlatform(raw: string): Partial<PlatformConfig> | null {
+  const text = foldText(raw)
   const patch: Partial<PlatformConfig> = {}
   if (/深色|暗色|dark/i.test(text)) patch.theme = 'dark'
   if (/淺色|亮色|light mode|白色模式/i.test(text)) patch.theme = 'light'
@@ -83,6 +90,7 @@ export function predictPrompts(): string[] {
 }
 
 export function topicFromMessage(text: string) {
+  text = foldText(text)
   if (/請假|員工|\bhr\b/i.test(text)) return 'hr'
   if (/財務|現金|發票|cashflow/i.test(text)) return 'finance'
   if (/業務|pipeline|銷售/i.test(text)) return 'sales'

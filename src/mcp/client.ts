@@ -33,21 +33,49 @@ export async function invokeMcpTool(tool: string, payload?: Record<string, unkno
   return res.json() as Promise<{ ui: McpUiResponse | null; platform: PlatformConfig; suggestions: string[] }>
 }
 
-export async function sendAgentChat(messages: { role: 'user' | 'assistant'; content: string }[]) {
+export type AgentChatResult = {
+  mode: string
+  assistantMessage: string
+  ui: McpUiResponse | null
+  platform: PlatformConfig
+  suggestions: string[]
+  provider: string | null
+  model: string | null
+}
+
+export async function sendAgentChat(
+  messages: { role: 'user' | 'assistant'; content: string }[],
+  onStatus?: (text: string) => void,
+): Promise<AgentChatResult> {
   const res = await fetch('/api/agent/chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ messages }),
   })
-  return res.json() as Promise<{
-    mode: string
-    assistantMessage: string
-    ui: McpUiResponse | null
-    platform: PlatformConfig
-    suggestions: string[]
-    provider: string | null
-    model: string | null
-  }>
+  if (!res.body) throw new Error('沒有串流')
+  const reader = res.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+  let result: AgentChatResult | null = null
+
+  while (true) {
+    const { value, done } = await reader.read()
+    if (done) break
+    buffer += decoder.decode(value, { stream: true })
+    const chunks = buffer.split('\n\n')
+    buffer = chunks.pop() ?? ''
+    for (const chunk of chunks) {
+      const event = chunk.match(/^event: (.+)$/m)?.[1] ?? 'message'
+      const data = chunk.match(/^data: (.+)$/m)?.[1]
+      if (!data) continue
+      const payload = JSON.parse(data) as { text?: string } & AgentChatResult
+      if (event === 'status' && payload.text) onStatus?.(payload.text)
+      if (event === 'done') result = payload
+    }
+  }
+
+  if (!result) throw new Error('串流沒有結束')
+  return result
 }
 
 export async function fetchDashboard(): Promise<McpUiResponse> {
