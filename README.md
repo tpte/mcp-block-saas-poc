@@ -2,7 +2,9 @@
 
 整頁智能畫布 + 對話框。外殼（深色、對話框位置、下一句預測數量、標題、畫布寬度）由 `platform:patch` MCP 客製，跟業務資料同一條 Agent 路徑。預設預測 3 句，可說「預測改成 5 個」或「關掉預測提示」。
 
-OpenRouter：`deepseek/deepseek-v4.1-flash-1017`，釘 **Together**。
+外部 MCP 掛在 Bridge 後面：外部只回 JSON，`bridge:call` 轉成 Block。目前內建示範 `notes`。stdio 真連線尚未接上。
+
+OpenRouter：`deepseek/deepseek-v4.1-flash-1017`，優先 **Together**。
 
 ## Stack
 

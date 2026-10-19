@@ -36,7 +36,7 @@ export function noteTopic(topic: string) {
 }
 
 export function looksLikeData(text: string) {
-  return /請假|員工|財務|現金|發票|業務|pipeline|銷售|庫存|進銷存|客服|工單|報表|kpi|圖表|渠道/i.test(text)
+  return /請假|員工|財務|現金|發票|業務|pipeline|銷售|庫存|進銷存|客服|工單|報表|kpi|圖表|渠道|外部|掛載|bridge|筆記|notes/i.test(text)
 }
 
 export function interpretPlatform(text: string): Partial<PlatformConfig> | null {
@@ -76,6 +76,7 @@ export function predictPrompts(): string[] {
     inventory: ['補貨危急 SKU', '列出未結案客服工單', '改成淺色模式', '排版置中', '顯示本月財務現金流', '預測改成 5 個'],
     support: ['今天客服處理紀錄', '本週 KPI 與轉換率', '對話框移到底部', '顯示模型', '改成深色模式', '畫布改成全寬'],
     analytics: ['渠道流量占比', '顯示本月財務現金流', '打開預測', '提示文字改成問我任何資料', '把對話框移到上方', '改成深色模式'],
+    bridge: ['列出已掛載的外部 MCP', '讀取 notes 記事', '顯示本月財務現金流', '改成深色模式', '預測改成 5 個', '把對話框移到上方'],
   }
   const list = pools[lastTopic] ?? pools.home
   return list.slice(0, config.suggestionCount)
@@ -88,6 +89,7 @@ export function topicFromMessage(text: string) {
   if (/庫存|進銷存|inventory/i.test(text)) return 'inventory'
   if (/客服|工單|support/i.test(text)) return 'support'
   if (/報表|analytics|kpi|渠道/i.test(text)) return 'analytics'
+  if (/外部|掛載|bridge|筆記|notes/i.test(text)) return 'bridge'
   return null
 }
 
@@ -98,6 +100,7 @@ export function topicFromTool(tool: string) {
   if (tool.startsWith('inventory:')) return 'inventory'
   if (tool.startsWith('support:')) return 'support'
   if (tool.startsWith('analytics:')) return 'analytics'
+  if (tool.startsWith('bridge:') || tool.startsWith('notes:')) return 'bridge'
   return lastTopic
 }
 

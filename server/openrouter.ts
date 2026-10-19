@@ -6,7 +6,7 @@ import {
   getSiteUrl,
 } from './env.ts'
 import { MCP_TOOL_NAMES } from './mcp/handlers.ts'
-import { dispatchTool, PLATFORM_TOOL } from './mcp/turn.ts'
+import { BRIDGE_CALL, BRIDGE_LIST, dispatchTool, PLATFORM_TOOL } from './mcp/turn.ts'
 
 export type ChatMessage = {
   role: 'system' | 'user' | 'assistant' | 'tool'
@@ -23,6 +23,30 @@ const toolDefs = [
       parameters: { type: 'object', properties: {}, additionalProperties: true },
     },
   })),
+  {
+    type: 'function' as const,
+    function: {
+      name: BRIDGE_LIST,
+      description: 'List external MCPs mounted behind the bridge MCP.',
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: BRIDGE_CALL,
+      description: 'Call a tool on a mounted external MCP. The bridge adapts raw JSON into canvas blocks.',
+      parameters: {
+        type: 'object',
+        properties: {
+          server: { type: 'string' },
+          tool: { type: 'string' },
+          args: { type: 'object' },
+        },
+        required: ['server', 'tool'],
+      },
+    },
+  },
   {
     type: 'function' as const,
     function: {
@@ -59,7 +83,7 @@ async function complete(key: string, messages: ChatMessage[], provider: Provider
     role: 'system',
     content: `你是 Super MCP 平台的 Orchestrator。畫布資料與平台外殼都透過 MCP 修改。
 看資料用業務 tools：${MCP_TOOL_NAMES.join(', ')}。
-改外殼（深色、對話框位置與寬度、下一句預測數量與開關、標題、畫布寬度）用 ${PLATFORM_TOOL}。
+改外殼用 ${PLATFORM_TOOL}。外部 MCP 用 ${BRIDGE_LIST} 與 ${BRIDGE_CALL}（server + tool），不要假設外部認識我們的 Block。
 若使用者同時要看資料又要改外殼，兩個 tool 都要呼叫。
 不要輸出 HTML。回覆用一句繁中。`,
   }

@@ -1,4 +1,5 @@
 import type { McpUiResponse, UiBlock } from '../../shared/ui.ts'
+import { callMountedMcp, listMountedMcps } from './bridge.ts'
 import {
   approveAllLeave,
   assignFirstTicket,
@@ -365,6 +366,11 @@ export function runKeywordAgent(message: string): McpUiResponse {
   }
   if (text.includes('請假') || text.includes('員工') || text.includes('hr')) {
     return invokeMcpTool('hr:get_leave')
+  }
+  if (text.includes('外部') || text.includes('掛載') || text.includes('bridge') || text.includes('筆記') || text.includes('notes')) {
+    return text.includes('讀') || text.includes('記事') || text.includes('notes')
+      ? callMountedMcp('notes', 'notes:list')
+      : listMountedMcps()
   }
   return {
     action: 'RENDER',
