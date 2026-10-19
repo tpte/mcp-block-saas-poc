@@ -81,11 +81,30 @@ const workspaceChecks = [
 ]
 
 let failed = 0
+try {
+  const wsRes = await fetch(`${base}/api/workspaces`, { headers: headers('ws-personal', 'agent-personal') })
+  const wsJson = await wsRes.json().catch(() => ({}))
+  if (!wsRes.ok || !Array.isArray(wsJson.workspaces) || wsJson.workspaces.length < 3) {
+    console.error('FAIL', 'workspaces-list', wsJson.workspaces?.length ?? 0)
+    failed += 1
+  } else {
+    console.log('OK', 'workspaces-list', `count=${wsJson.workspaces.length}`)
+  }
+} catch (err) {
+  console.error('FAIL', 'workspaces-list', err.message)
+  failed += 1
+}
 for (const { ws, agent } of workspaceChecks) {
   try {
     const res = await fetch(`${base}/api/session`, { headers: headers(ws, agent) })
     const data = await res.json()
-    if (!res.ok || !data.agents?.length) {
+    const sessionOk =
+      res.ok &&
+      data.agents?.length &&
+      data.session?.capabilities?.role &&
+      Array.isArray(data.workspaceMembers) &&
+      Array.isArray(data.devUsers)
+    if (!sessionOk) {
       console.error('FAIL', 'session-agents', ws, data.agents?.length ?? 0)
       failed += 1
     } else {

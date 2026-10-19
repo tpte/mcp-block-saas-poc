@@ -3,6 +3,7 @@ import { DEFAULT_LAYOUT_PREFERENCES } from '../../../shared/platform.ts'
 import { PRODUCT_NAME, PRODUCT_SUBTITLE } from '../../../shared/product.ts'
 import type { ToolTraceEntry } from '../../../shared/trace.ts'
 import type { Agent, Workspace } from '../../../shared/domain.ts'
+import type { ComposerHandle } from '../chat/Composer'
 import {
   addCanvasBlock,
   deleteCanvasBlock,
@@ -112,6 +113,7 @@ export function useAgentSession(options: AgentSessionOptions = {}) {
   const [devUsers, setDevUsers] = useState<DevUser[]>([])
   const [flash, setFlash] = useState<{ text: string; variant: 'error' | 'ok' } | null>(null)
   const [canvasHydrated, setCanvasHydrated] = useState(!loadCanvas)
+  const composerFocusRef = useRef<ComposerHandle | null>(null)
   const busyRef = useRef(false)
   const canvasRevisionRef = useRef(1)
   const mergeModeRef = useRef<'merge' | 'replace'>('merge')
@@ -465,6 +467,7 @@ export function useAgentSession(options: AgentSessionOptions = {}) {
     health,
     canvas,
     canvasHydrated,
+    composerFocusRef,
     messages,
     platform,
     suggestions,

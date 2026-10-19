@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import type { SpaceProfile } from '../../shared/workspaceManifest.ts'
 import { BlockCanvas } from '../features/canvas/BlockCanvas'
-import { Composer, type ComposerHandle } from '../features/chat/Composer'
+import { Composer } from '../features/chat/Composer'
 import { ConversationThread } from '../features/chat/ConversationThread'
 import { IdeSpaceView } from '../features/space/IdeSpaceView'
 import { useAgentSessionContext } from '../features/session/AgentSessionContext'
@@ -12,7 +12,6 @@ import type { BlockAction, UiBlock } from '../types/ui'
 export function SpacePage() {
   const { slug = '' } = useParams()
   const session = useAgentSessionContext()
-  const composerRef = useRef<ComposerHandle>(null)
   const [expandedBlock, setExpandedBlock] = useState<UiBlock | null>(null)
   const [spaceProfile, setSpaceProfile] = useState<SpaceProfile>('admin')
   const top = session.platform.composerPosition === 'top'
@@ -68,7 +67,7 @@ export function SpacePage() {
         )}
       </main>
       <Composer
-        ref={composerRef}
+        ref={session.composerFocusRef}
         scopeId={session.clientSession.workspaceId}
         messages={session.messages}
         platform={session.platform}

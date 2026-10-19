@@ -4,11 +4,12 @@ import type { CatalogItem } from '../../mcp/client'
 type Props = {
   open: boolean
   items: CatalogItem[]
+  loading?: boolean
   onClose: () => void
   onSelect: (item: CatalogItem) => void
 }
 
-export function CommandPalette({ open, items, onClose, onSelect }: Props) {
+export function CommandPalette({ open, items, loading = false, onClose, onSelect }: Props) {
   const [query, setQuery] = useState('')
   const [index, setIndex] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -94,7 +95,11 @@ export function CommandPalette({ open, items, onClose, onSelect }: Props) {
               </button>
             </li>
           ))}
-          {filtered.length === 0 ? <li className="px-4 py-3 text-sm text-[var(--muted)]">沒有符合的項目</li> : null}
+          {filtered.length === 0 ? (
+            <li className="px-4 py-3 text-sm text-[var(--muted)]">
+              {loading ? '載入模組目錄…' : '沒有符合的項目'}
+            </li>
+          ) : null}
         </ul>
       </div>
     </div>

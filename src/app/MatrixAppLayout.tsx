@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { matchPath, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { AppShell } from '../layout/AppShell'
 import { CommandPalette } from '../features/command/CommandPalette'
@@ -14,8 +14,6 @@ import {
   RedirectModuleRoute,
 } from './RedirectLegacyRoutes'
 import { WorkspaceShell } from './WorkspaceShell'
-import type { ComposerHandle } from '../features/chat/Composer'
-
 function MatrixAppInner() {
   const session = useAgentSessionContext()
   const location = useLocation()
@@ -25,16 +23,17 @@ function MatrixAppInner() {
   const isStudio = Boolean(location.pathname.includes('/studio'))
   const isMe = location.pathname === '/me'
   const activeWs = session.workspaces.find((w) => w.id === session.clientSession.workspaceId)
-  const { items: catalogItems, reload: reloadCatalog } = useModuleCatalog(session.clientSession.workspaceId)
+  const { items: catalogItems, loading: catalogLoading, reload: reloadCatalog } = useModuleCatalog(
+    session.clientSession.workspaceId,
+  )
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
-  const composerRef = useRef<ComposerHandle>(null)
 
   useEffect(() => {
     if (!session.platform.commandPaletteEnabled) return
     return installShortcutListener(session.platform, {
       openCommandPalette: () => setPaletteOpen(true),
-      focusComposer: () => composerRef.current?.focus(),
+      focusComposer: () => session.composerFocusRef.current?.focus(),
       showShortcuts: () => setShortcutsOpen(true),
       nextBlock: () => session.focusAdjacentBlock(1),
       prevBlock: () => session.focusAdjacentBlock(-1),
@@ -44,7 +43,7 @@ function MatrixAppInner() {
         setShortcutsOpen(false)
       },
     })
-  }, [session.platform, session.focusAdjacentBlock])
+  }, [session.platform, session.focusAdjacentBlock, session.composerFocusRef])
 
   const headerTitle = slug && activeWs ? activeWs.name : session.platform.title
 
@@ -85,6 +84,7 @@ function MatrixAppInner() {
       <CommandPalette
         open={paletteOpen && session.platform.commandPaletteEnabled}
         items={catalogItems}
+        loading={catalogLoading}
         onClose={() => setPaletteOpen(false)}
         onSelect={(item) => {
           void session.runMcpInvoke(item.tool, item.defaultPayload)
