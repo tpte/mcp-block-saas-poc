@@ -8,8 +8,10 @@ import { useModuleCatalog } from '../features/module/useModuleCatalog'
 import { AgentSessionProvider, useAgentSessionContext } from '../features/session/AgentSessionContext'
 import { WorkspaceDock } from '../features/workspace/WorkspaceDock'
 import { MePage } from '../pages/MePage'
+import { legacyCompanyBasePath } from '../../shared/legacyRoutes.ts'
 import {
   HomeOrLastSpace,
+  LegacyCompanySlugRedirect,
   RedirectGlobalStudio,
   RedirectModuleRoute,
 } from './RedirectLegacyRoutes'
@@ -63,6 +65,8 @@ function MatrixAppInner() {
         <div key={location.pathname} className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <Routes>
             <Route path="/" element={<HomeOrLastSpace />} />
+            <Route path={`${legacyCompanyBasePath}/*`} element={<LegacyCompanySlugRedirect />} />
+            <Route path={legacyCompanyBasePath} element={<LegacyCompanySlugRedirect />} />
             <Route path="/w/:slug/studio" element={<WorkspaceShell />} />
             <Route path="/w/:slug" element={<WorkspaceShell />} />
             <Route path="/me" element={<MePage />} />

@@ -375,7 +375,7 @@ export async function runKeywordAgent(message: string): Promise<McpUiResponse> {
     return invokeMcpTool('hr:get_leave')
   }
   if (
-    /打造|後台|manifest|資料源|資料庫|客製|模板|template|skill|workspace|hiyen|模組.*啟|建立.*庫/.test(text)
+    /打造|後台|manifest|資料源|資料庫|客製|模板|template|skill|workspace|營運後台|公司後台|模組.*啟|建立.*庫/.test(text)
   ) {
     const { builderGetSetupContext } = await import('../builder/handlers.ts')
     const ui = builderGetSetupContext()

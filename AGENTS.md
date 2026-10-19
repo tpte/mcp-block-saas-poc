@@ -1,4 +1,4 @@
-# Agent 交付（MATRIX / HIYEN PoC）
+# MATRIX 交付
 
 ## 做完就部署（使用者要求）
 
@@ -14,11 +14,11 @@
 
 ## 產品邊界
 
-- 產品名 **MATRIX**（`shared/product.ts`），**≠ HIYEN MATRIX** 品牌。
-- 工作區 **HIYEN** 是 tenant 名稱，非產品線。
+- 產品名與對外文案正本：**[`shared/product.ts`](shared/product.ts)**（MCP 營運工作台）。
+- 範例工作區：**營運後台範例**（slug `company`，id `ws-company`）；**開發者工作台**（slug `personal`）。
 
 ## 常用
 
 - 本機：`npm run dev:all`
 - 生產：https://matrix-mcp-production.up.railway.app
-- 驗收：`npm run verify:all`（chat + builder + SPA）；`verify:full` 含 Playwright 煙測；`BASE_URL` 可打 production
+- 驗收：`npm run verify:all`（chat + builder + SPA + copy）；`verify:full` 含 Playwright；`BASE_URL` 可打 production

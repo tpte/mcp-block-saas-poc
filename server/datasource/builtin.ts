@@ -8,7 +8,7 @@ export function workspaceSqlitePath(workspaceId: string, dataSourceId: string) {
   return join(dir, `${dataSourceId}.sqlite`)
 }
 
-/** PoC：建立空 SQLite 檔占位，免 env；日後可接 better-sqlite3 */
+/** 建立空 SQLite 檔占位，免 env；日後可接 better-sqlite3 */
 export function ensureWorkspaceSqlite(workspaceId: string, dataSourceId: string) {
   const dir = join(ROOT, workspaceId, 'datasources')
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
@@ -43,9 +43,9 @@ export function describeDataSourceForUser(input: {
   const { label, type, secretRef, health } = input
   if (health === 'healthy') {
     if (secretRef === 'builtin:workspace-sqlite') {
-      return `${label}：本機 SQLite 已建立，可開始規劃表單／模組（PoC 模組仍可能用示範資料）。`
+      return `${label}：本機 SQLite 已就緒，可開始規劃表單與模組。`
     }
-    if (secretRef === 'builtin:demo') return `${label}：示範內建資料，可直接試玩模組。`
+    if (secretRef === 'builtin:demo') return `${label}：內建範例資料，可直接操作模組。`
     return `${label}：連線狀態良好（${type}）。`
   }
   if (secretRef.startsWith('env:') && health === 'unknown') {

@@ -42,15 +42,15 @@ const cases = [
   {
     name: 'sample-leave',
     ws: 'ws-sample',
-    agent: 'agent-personal',
+    agent: 'agent-sample-personal',
     text: '看這個月的請假',
     assert: (p) =>
       p.mode === 'offline' && (p.trace || []).some((t) => t.tool === 'hr:get_leave') && p.ui,
   },
   {
-    name: 'hiyen-cashflow',
-    ws: 'ws-hiyen',
-    agent: 'agent-hiyen-personal',
+    name: 'company-cashflow',
+    ws: 'ws-company',
+    agent: 'agent-company-copilot',
     text: '本週現金流',
     assert: (p) =>
       p.mode === 'offline' &&
@@ -76,8 +76,8 @@ const cases = [
 
 const workspaceChecks = [
   { ws: 'ws-personal', agent: 'agent-personal' },
-  { ws: 'ws-sample', agent: 'agent-personal' },
-  { ws: 'ws-hiyen', agent: 'agent-hiyen-personal' },
+  { ws: 'ws-sample', agent: 'agent-sample-personal' },
+  { ws: 'ws-company', agent: 'agent-company-copilot' },
 ]
 
 let failed = 0

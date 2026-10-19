@@ -138,9 +138,10 @@ export function builderListTemplates() {
 
 export function builderApplyTemplate(payload?: Record<string, unknown>) {
   const session = requireManifestAdmin()
-  const templateId = String(payload?.templateId ?? '') as WorkspaceTemplateId
+  let templateId = String(payload?.templateId ?? '')
+  if (templateId === 'hiyen-starter') templateId = 'company-starter'
   const confirm = Boolean(payload?.confirm)
-  const tpl = WORKSPACE_TEMPLATES[templateId]
+  const tpl = WORKSPACE_TEMPLATES[templateId as WorkspaceTemplateId]
   if (!tpl) throw new Error(`未知模板：${templateId}`)
   if (!confirm) {
     return {

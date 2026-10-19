@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 /**
- * Builder PoC 驗收：health、skills、templates、setup-context、RAG、preview。
+ * Builder 驗收：health、skills、templates、setup-context、RAG、preview。
  * Usage: BASE_URL=https://matrix-mcp-production.up.railway.app npm run verify:builder
  */
 const base = (process.env.BASE_URL ?? 'http://localhost:8787').replace(/\/$/, '')
 const headers = {
   'X-User-Id': process.env.MATRIX_USER_ID ?? 'user-alan',
-  'X-Workspace-Id': process.env.MATRIX_WORKSPACE_ID ?? 'ws-hiyen',
-  'X-Agent-Id': process.env.MATRIX_AGENT_ID ?? 'agent-hiyen-personal',
+  'X-Workspace-Id': process.env.MATRIX_WORKSPACE_ID ?? 'ws-company',
+  'X-Agent-Id': process.env.MATRIX_AGENT_ID ?? 'agent-company-copilot',
 }
 
 async function get(path) {

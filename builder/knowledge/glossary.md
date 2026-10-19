@@ -1,8 +1,12 @@
 # MATRIX 打造名詞（RAG）
 
+## 產品定位
+
+MATRIX 是 MCP 營運工作台：開發者用 manifest／Workbench／直連 invoke；團隊用「打造後台」與模板上線公司模組。**營運後台範例**工作區（slug `company`）是多模組公司後台的參考，不是客戶品牌。
+
 ## 工作區（Workspace）
 
-租戶邊界。HIYEN 是範例 tenant 名稱，產品名 MATRIX ≠ HIYEN MATRIX 品牌。
+租戶邊界。每個工作區有獨立 manifest、資料目錄與成員。
 
 ## Manifest
 

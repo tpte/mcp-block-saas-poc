@@ -1,4 +1,12 @@
-import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  renameSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs'
 import { join } from 'node:path'
 
 const ROOT = join(process.cwd(), '.data', 'storage')
@@ -29,6 +37,16 @@ export function storageGet(workspaceId: string, key: string) {
   const path = join(workspaceDir(workspaceId), safe)
   if (!existsSync(path)) return null
   return readFileSync(path)
+}
+
+export function storageRenameWorkspace(oldId: string, newId: string) {
+  const from = join(ROOT, oldId)
+  const to = join(ROOT, newId)
+  if (!existsSync(from)) return false
+  if (existsSync(to)) return false
+  if (!existsSync(ROOT)) mkdirSync(ROOT, { recursive: true })
+  renameSync(from, to)
+  return true
 }
 
 export function storageList(workspaceId: string): StorageObject[] {

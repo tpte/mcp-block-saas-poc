@@ -26,7 +26,7 @@ function defaultPlatform(): PlatformConfig {
   }
 }
 
-export type WorkspaceTemplateId = 'blank-custom' | 'hiyen-starter' | 'erp-demo' | 'dev-ide'
+export type WorkspaceTemplateId = 'blank-custom' | 'company-starter' | 'erp-demo' | 'dev-ide'
 
 export type WorkspaceTemplate = {
   id: WorkspaceTemplateId
@@ -57,10 +57,10 @@ export const WORKSPACE_TEMPLATES: Record<WorkspaceTemplateId, WorkspaceTemplate>
       canvasMergeMode: 'merge',
     },
   },
-  'hiyen-starter': {
-    id: 'hiyen-starter',
-    label: 'HIYEN 型入門',
-    description: '常見公司後台模組組合 + 資料源占位，可再微調。',
+  'company-starter': {
+    id: 'company-starter',
+    label: '公司後台入門',
+    description: '常見營運模組組合與資料源占位，可再微調。',
     manifest: {
       version: 1,
       displayName: '公司後台',
@@ -100,11 +100,11 @@ export const WORKSPACE_TEMPLATES: Record<WorkspaceTemplateId, WorkspaceTemplate>
   },
   'erp-demo': {
     id: 'erp-demo',
-    label: '完整示範 ERP',
-    description: '開啟所有示範模組（含銷售、庫存），適合試玩。',
+    label: '完整模組範例',
+    description: '開啟所有範例模組（含銷售、庫存），適合體驗。',
     manifest: {
       version: 1,
-      displayName: '示範 ERP',
+      displayName: '模組範例',
       modules: {
         enabledCatalogIds: [
           'hr:get_leave',
@@ -126,7 +126,7 @@ export const WORKSPACE_TEMPLATES: Record<WorkspaceTemplateId, WorkspaceTemplate>
         {
           id: 'ds-demo',
           type: 'sqlite',
-          label: '示範內建資料',
+          label: '內建範例資料',
           secretRef: 'builtin:demo',
           health: 'healthy',
         },
@@ -135,8 +135,8 @@ export const WORKSPACE_TEMPLATES: Record<WorkspaceTemplateId, WorkspaceTemplate>
         ...baseUi,
         platform: {
           ...defaultPlatform(),
-          title: '示範 ERP',
-          subtitle: 'Sample 資料，可還原後再客製',
+          title: '模組範例',
+          subtitle: '內建範例資料，可還原後再客製',
         },
       },
       deployments: [],

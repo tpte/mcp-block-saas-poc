@@ -1,4 +1,4 @@
-import { PRODUCT_NAME } from '../../../shared/product.ts'
+import { PRODUCT_NAME, PRODUCT_SUBTITLE, PRODUCT_TAGLINE } from '../../../shared/product.ts'
 
 type Props = {
   workspaceName?: string
@@ -22,9 +22,11 @@ export function MatrixHomeHero({ workspaceName }: Props) {
       />
       <div className="relative max-w-lg text-center">
         <h1 className="text-4xl font-semibold tracking-tight md:text-5xl">{PRODUCT_NAME}</h1>
+        <p className="mt-3 text-sm font-medium text-[var(--fg)]">{PRODUCT_SUBTITLE}</p>
+        <p className="mt-3 text-sm leading-relaxed text-[var(--muted)]">{PRODUCT_TAGLINE}</p>
         <p className="mt-4 text-sm leading-relaxed text-[var(--muted)]">
           {workspaceName ? `目前是「${workspaceName}」。` : ''}
-          選下方工作區，開始跟 Agent 對話。
+          選下方工作區：開發者工作台或營運後台範例，開始跟 Agent 對話。
         </p>
       </div>
     </div>

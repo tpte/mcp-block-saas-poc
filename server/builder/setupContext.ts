@@ -50,7 +50,7 @@ export function analyzeSetupContext(manifest: WorkspaceManifest): SetupContext {
   const suggestedSkillIds: string[] = ['workspace-build']
 
   if (manifest.dataSources.length === 0) {
-    gaps.push('尚未設定資料源（資料庫／API）；模組目前多為示範資料')
+    gaps.push('尚未連線資料源，部分模組使用內建範例')
     suggestedSkillIds.push('data-source')
   }
   if (moduleInstances.length < 2) {

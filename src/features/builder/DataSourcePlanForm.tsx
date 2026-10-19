@@ -95,7 +95,9 @@ export function DataSourcePlanForm({ canManage, existing, messages = [], onSaved
           ))}
         </ul>
       ) : (
-        <p className="mb-2 text-[10px] text-amber-800 dark:text-amber-200">尚未規劃資料源 — 模組多半仍是示範資料。</p>
+        <p className="mb-2 text-[10px] text-amber-800 dark:text-amber-200">
+          尚未規劃資料源 — 連上後，模組會改用你的工作區資料。
+        </p>
       )}
       <div className="flex flex-wrap gap-2">
         <input

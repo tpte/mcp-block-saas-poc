@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { DEFAULT_LAYOUT_PREFERENCES } from '../../shared/platform.ts'
 import { PRODUCT_NAME, PRODUCT_SUBTITLE } from '../../shared/product.ts'
@@ -16,7 +16,16 @@ import type {
   WorkspaceMember,
   WorkspaceRole,
 } from '../../shared/domain.ts'
-import { storagePut } from '../storage/workspaceStorage.ts'
+import { storagePut, storageRenameWorkspace } from '../storage/workspaceStorage.ts'
+
+const LEGACY_WORKSPACE_ID = 'ws-hiyen'
+const COMPANY_WORKSPACE_ID = 'ws-company'
+const LEGACY_AGENT_ID = 'agent-hiyen-personal'
+const COMPANY_AGENT_ID = 'agent-company-copilot'
+const BRANDING_VERSION = 2
+
+const COMPANY_AGENT_PROMPT =
+  '你是此工作區的營運後台夥伴。使用者可能不懂程式；用 builder Skills 與 RAG 引導（資料源、模組、畫布），模板只在使用者要還原時套用。繁中。'
 
 type DbShape = {
   users: User[]
@@ -28,6 +37,7 @@ type DbShape = {
   runNodes: RunNode[]
   workspaceMembers: WorkspaceMember[]
   workspaceInvites: WorkspaceInvite[]
+  brandingVersion?: number
 }
 
 const DATA_DIR = join(process.cwd(), '.data')
@@ -57,9 +67,14 @@ const defaultPlatform = (): PlatformConfig => ({
 function seed(): DbShape {
   const userAlan: User = { id: 'user-alan', email: 'alan@example.com', displayName: 'Alan Huang' }
   const userDemo: User = { id: 'user-demo', email: 'demo@example.com', displayName: 'Demo User' }
-  const wsPersonal: Workspace = { id: 'ws-personal', name: 'Alan 個人駕駛艙', slug: 'personal', isSample: false }
-  const wsSample: Workspace = { id: 'ws-sample', name: '示範 ERP Sample', slug: 'sample-erp', isSample: true }
-  const wsHiyen: Workspace = { id: 'ws-hiyen', name: 'HIYEN', slug: 'hiyen', isSample: false }
+  const wsPersonal: Workspace = { id: 'ws-personal', name: '開發者工作台', slug: 'personal', isSample: false }
+  const wsSample: Workspace = { id: 'ws-sample', name: '模組範例', slug: 'sample-erp', isSample: true }
+  const wsCompany: Workspace = {
+    id: COMPANY_WORKSPACE_ID,
+    name: '營運後台範例',
+    slug: 'company',
+    isSample: false,
+  }
 
   const orchestrator: Agent = {
     id: 'agent-orch',
@@ -107,7 +122,7 @@ function seed(): DbShape {
     name: 'Personal Copilot',
     kind: 'personal',
     systemPrompt:
-      '你是 Alan 的個人助手，可存取工作區內允許的所有 tools。協助使用者用 builder Skills 客製後台。繁中。',
+      '你是開發者工作區的助手，可存取工作區內允許的所有 tools。協助 manifest、MCP、Workbench 與 builder Skills。繁中。',
     policy: {
       allowedToolPrefixes: [
         'hr:',
@@ -142,34 +157,41 @@ function seed(): DbShape {
   storagePut(
     wsPersonal.id,
     demoPkg.bundlePath,
-    JSON.stringify({ template: 'document', body: '這是已發布的示範 Block 套件。' }),
+    JSON.stringify({ template: 'document', body: '這是已發布的 Block 套件範例。' }),
   )
 
-  const hiyenPersonal: Agent = {
+  const companyPersonal: Agent = {
     ...personalAgent,
-    id: 'agent-hiyen-personal',
-    workspaceId: wsHiyen.id,
-    name: 'HIYEN Copilot',
-    systemPrompt:
-      '你是 HIYEN 工作區的客製化後台夥伴。使用者可能不懂程式；用 builder Skills 與 RAG 引導（資料源、模組、畫布），模板只在使用者要還原時套用。繁中。',
+    id: COMPANY_AGENT_ID,
+    workspaceId: wsCompany.id,
+    name: '營運 Copilot',
+    systemPrompt: COMPANY_AGENT_PROMPT,
   }
 
   const samplePersonal: Agent = {
     ...personalAgent,
     id: 'agent-sample-personal',
     workspaceId: wsSample.id,
-    name: 'ERP 示範 Copilot',
-    systemPrompt: '你是示範 ERP 工作區的助手。協助查看示範資料與模組。繁中。',
+    name: '模組範例 Copilot',
+    systemPrompt: '你是模組範例工作區的助手。協助查看內建範例資料與模組。繁中。',
   }
 
   return {
     users: [userAlan, userDemo],
-    workspaces: [wsPersonal, wsSample, wsHiyen],
-    agents: [orchestrator, workerHr, workerFinance, personalAgent, hiyenPersonal, samplePersonal],
+    workspaces: [wsPersonal, wsSample, wsCompany],
+    agents: [orchestrator, workerHr, workerFinance, personalAgent, companyPersonal, samplePersonal],
     platformByWorkspace: {
       [wsPersonal.id]: defaultPlatform(),
-      [wsSample.id]: { ...defaultPlatform(), title: '示範 ERP', subtitle: 'Sample 資料，非真實商用' },
-      [wsHiyen.id]: { ...defaultPlatform(), title: 'HIYEN', subtitle: 'HIYEN 工作區後台（MATRIX 租戶，≠ HIYEN MATRIX 產品）' },
+      [wsSample.id]: {
+        ...defaultPlatform(),
+        title: '模組範例',
+        subtitle: '內建範例資料，用於體驗模組',
+      },
+      [wsCompany.id]: {
+        ...defaultPlatform(),
+        title: '營運後台',
+        subtitle: '公司模組與資料源 · Skills 引導',
+      },
     },
     mcpMounts: [],
     blockPackages: [demoPkg],
@@ -178,11 +200,114 @@ function seed(): DbShape {
       { workspaceId: wsPersonal.id, userId: userAlan.id, role: 'owner' },
       { workspaceId: wsPersonal.id, userId: userDemo.id, role: 'member' },
       { workspaceId: wsSample.id, userId: userAlan.id, role: 'owner' },
-      { workspaceId: wsHiyen.id, userId: userAlan.id, role: 'owner' },
-      { workspaceId: wsHiyen.id, userId: userDemo.id, role: 'member' },
+      { workspaceId: wsCompany.id, userId: userAlan.id, role: 'owner' },
+      { workspaceId: wsCompany.id, userId: userDemo.id, role: 'member' },
     ],
     workspaceInvites: [],
+    brandingVersion: BRANDING_VERSION,
   }
+}
+
+function remapWorkspaceId(db: DbShape, oldId: string, newId: string) {
+  for (const ws of db.workspaces) {
+    if (ws.id === oldId) ws.id = newId
+  }
+  for (const a of db.agents) {
+    if (a.workspaceId === oldId) a.workspaceId = newId
+  }
+  for (const m of db.workspaceMembers) {
+    if (m.workspaceId === oldId) m.workspaceId = newId
+  }
+  for (const p of db.blockPackages) {
+    if (p.workspaceId === oldId) p.workspaceId = newId
+  }
+  for (const n of db.runNodes) {
+    if (n.workspaceId === oldId) n.workspaceId = newId
+  }
+  if (db.platformByWorkspace[oldId]) {
+    db.platformByWorkspace[newId] = db.platformByWorkspace[oldId]
+    delete db.platformByWorkspace[oldId]
+  }
+}
+
+function patchManifestBranding(workspaceId: string) {
+  const path = join(DATA_DIR, 'storage', workspaceId, 'manifest.json')
+  if (!existsSync(path)) return
+  try {
+    const raw = readFileSync(path, 'utf8')
+    if (!/hiyen/i.test(raw)) return
+    const next = raw
+      .replace(/HIYEN/g, '營運後台')
+      .replace(/hiyen/g, 'company')
+    writeFileSync(path, next, 'utf8')
+  } catch {
+    /* ignore */
+  }
+}
+
+function migrateLegacyBranding(db: DbShape): boolean {
+  if ((db.brandingVersion ?? 0) >= BRANDING_VERSION) return false
+
+  const legacyWs = db.workspaces.find((w) => w.id === LEGACY_WORKSPACE_ID || w.slug === 'hiyen')
+  if (legacyWs) {
+    legacyWs.name = '營運後台範例'
+    legacyWs.slug = 'company'
+    if (legacyWs.id === LEGACY_WORKSPACE_ID) {
+      remapWorkspaceId(db, LEGACY_WORKSPACE_ID, COMPANY_WORKSPACE_ID)
+      storageRenameWorkspace(LEGACY_WORKSPACE_ID, COMPANY_WORKSPACE_ID)
+      const opsOld = join(DATA_DIR, 'ops', `${LEGACY_WORKSPACE_ID}.jsonl`)
+      const opsNew = join(DATA_DIR, 'ops', `${COMPANY_WORKSPACE_ID}.jsonl`)
+      if (existsSync(opsOld) && !existsSync(opsNew)) {
+        try {
+          renameSync(opsOld, opsNew)
+        } catch {
+          /* ignore */
+        }
+      }
+      patchManifestBranding(COMPANY_WORKSPACE_ID)
+    }
+  }
+
+  const companyWs = db.workspaces.find((w) => w.id === COMPANY_WORKSPACE_ID || w.slug === 'company')
+  if (companyWs) {
+    companyWs.name = '營運後台範例'
+    companyWs.slug = 'company'
+    const plat = db.platformByWorkspace[companyWs.id]
+    if (plat) {
+      plat.title = '營運後台'
+      plat.subtitle = '公司模組與資料源 · Skills 引導'
+    }
+  }
+
+  for (const a of db.agents) {
+    if (a.id === LEGACY_AGENT_ID) {
+      a.id = COMPANY_AGENT_ID
+    }
+    if (a.workspaceId === COMPANY_WORKSPACE_ID || a.id === COMPANY_AGENT_ID) {
+      if (/HIYEN/i.test(a.name)) a.name = '營運 Copilot'
+      if (/HIYEN/i.test(a.systemPrompt)) a.systemPrompt = COMPANY_AGENT_PROMPT
+    }
+  }
+
+  const personal = db.workspaces.find((w) => w.slug === 'personal')
+  if (personal && personal.name.includes('駕駛艙')) {
+    personal.name = '開發者工作台'
+  }
+
+  const sample = db.workspaces.find((w) => w.slug === 'sample-erp')
+  if (sample) {
+    if (sample.name.includes('Sample') || sample.name.includes('示範 ERP')) {
+      sample.name = '模組範例'
+    }
+    const plat = db.platformByWorkspace[sample.id]
+    if (plat) {
+      plat.title = '模組範例'
+      plat.subtitle = '內建範例資料，用於體驗模組'
+    }
+  }
+
+  db.brandingVersion = BRANDING_VERSION
+  return true
 }
 
 let cache: DbShape | null = null
@@ -222,13 +347,13 @@ function load(): DbShape {
   }
   cache = JSON.parse(readFileSync(DB_PATH, 'utf8')) as DbShape
   if (!Array.isArray(cache.workspaceInvites)) cache.workspaceInvites = []
-  if (!cache.workspaces.some((w) => w.slug === 'hiyen')) {
+  if (!cache.workspaces.some((w) => w.slug === 'company')) {
     const fresh = seed()
-    const hiyen = fresh.workspaces.find((w) => w.slug === 'hiyen')!
-    cache.workspaces.push(hiyen)
-    cache.platformByWorkspace[hiyen.id] = fresh.platformByWorkspace[hiyen.id]!
-    cache.agents.push(...fresh.agents.filter((a) => a.workspaceId === hiyen.id))
-    cache.workspaceMembers.push(...fresh.workspaceMembers.filter((m) => m.workspaceId === hiyen.id))
+    const company = fresh.workspaces.find((w) => w.slug === 'company')!
+    cache.workspaces.push(company)
+    cache.platformByWorkspace[company.id] = fresh.platformByWorkspace[company.id]!
+    cache.agents.push(...fresh.agents.filter((a) => a.workspaceId === company.id))
+    cache.workspaceMembers.push(...fresh.workspaceMembers.filter((m) => m.workspaceId === company.id))
     persist()
   }
   if (!Array.isArray(cache.agents) || cache.agents.length === 0) {
@@ -253,6 +378,7 @@ function load(): DbShape {
     }
   }
   if (agentPolicyMigrated) persist()
+  if (migrateLegacyBranding(cache)) persist()
   return cache
 }
 

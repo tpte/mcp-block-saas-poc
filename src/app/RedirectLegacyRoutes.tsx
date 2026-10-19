@@ -1,4 +1,5 @@
-import { Navigate, useParams } from 'react-router-dom'
+import { Navigate, useLocation, useParams } from 'react-router-dom'
+import { legacyCompanyBasePath } from '../../shared/legacyRoutes.ts'
 import { LAST_SPACE_SLUG_KEY } from '../features/session/workspaceUiCache'
 import { HomePage } from '../pages/HomePage'
 
@@ -21,4 +22,11 @@ export function HomeOrLastSpace() {
 export function RedirectStudioWithSlug() {
   const { slug = 'personal' } = useParams()
   return <Navigate to={`/w/${slug}/studio`} replace />
+}
+
+/** 舊書籤 URL 重導至 company 工作區 */
+export function LegacyCompanySlugRedirect() {
+  const location = useLocation()
+  const rest = location.pathname.replace(new RegExp(`^${legacyCompanyBasePath}`), '/w/company')
+  return <Navigate to={rest + location.search + location.hash} replace />
 }

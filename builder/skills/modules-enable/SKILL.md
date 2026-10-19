@@ -3,7 +3,7 @@
 ## 核心訊息
 
 模組 = manifest 裡 `modules.enabledCatalogIds` 的 MCP 工具集合（HR、財務、銷售…）。  
-啟用模組 **之前** 應先確認資料源（見 data-source skill），否則先說明「目前會是示範資料」。
+啟用模組 **之前** 應先確認資料源（見 data-source skill），否則先說明「尚未連線時，部分模組使用內建範例資料」。
 
 ## 對話指引
 
@@ -18,8 +18,8 @@
 |------|------------|
 | 小型公司後台 | hr:*, finance:*, support:* |
 | 電商營運 | inventory:*, sales:*, analytics:* |
-| 個人駕駛艙 | analytics:* + 少量 hr |
+| 開發者工作台 | analytics:* + bridge:* + 少量 hr |
 
 ## 還原模板
 
-若使用者說「跟 HIYEN 一樣起步」，用 `builder:apply_template` 的 `hiyen-starter`，再一起微調。
+若使用者要「公司後台常見起步」，用 `builder:apply_template` 的 `company-starter`，再一起微調。

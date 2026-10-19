@@ -36,9 +36,9 @@ import { storageList } from './storage/workspaceStorage.ts'
 import { DEFAULT_QUOTES, BILLING_SPEC_VERSION } from '../shared/billing.ts'
 import {
   PRODUCT_CODE,
-  PRODUCT_DISCLAIMER,
   PRODUCT_NAME,
-  PRODUCT_NOT_HIYEN_LABEL,
+  PRODUCT_SUBTITLE,
+  PRODUCT_TAGLINE,
 } from '../shared/product.ts'
 
 const app = new Hono()
@@ -60,8 +60,8 @@ app.get('/api/health', (c) => {
     product: {
       code: PRODUCT_CODE,
       name: PRODUCT_NAME,
-      notHiyenMatrix: PRODUCT_NOT_HIYEN_LABEL,
-      disclaimer: PRODUCT_DISCLAIMER,
+      subtitle: PRODUCT_SUBTITLE,
+      tagline: PRODUCT_TAGLINE,
     },
     session: {
       userId: session.user.id,

@@ -47,6 +47,12 @@ export type WorkspaceInviteRow = {
 
 export type HealthInfo = {
   ok: boolean
+  product?: {
+    code: string
+    name: string
+    subtitle: string
+    tagline: string
+  }
   session?: {
     userId: string
     userName: string

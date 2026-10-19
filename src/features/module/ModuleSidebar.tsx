@@ -38,7 +38,7 @@ export function ModuleSidebar({
           <p className="px-2 text-xs text-[var(--muted)]">載入 MODULE…</p>
         ) : modules.length === 0 ? (
           <div className="rounded-md border border-dashed border-[var(--line)] px-2 py-3 text-xs text-[var(--muted)]">
-            尚未啟用 MODULE。到 Studio 設定 manifest 與 MCP。
+            尚未啟用模組。到 Studio 設定 manifest 與 MCP。
           </div>
         ) : (
           <ul className="space-y-0.5">

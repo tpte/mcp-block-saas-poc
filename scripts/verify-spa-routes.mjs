@@ -5,7 +5,7 @@
  */
 const base = (process.env.BASE_URL ?? 'http://127.0.0.1:8787').replace(/\/$/, '')
 
-const routes = ['/', '/me', '/w/personal', '/w/personal/studio', '/w/sample-erp', '/w/hiyen/studio']
+const routes = ['/', '/me', '/w/personal', '/w/personal/studio', '/w/sample-erp', '/w/company/studio']
 
 let failed = 0
 let skipped = false

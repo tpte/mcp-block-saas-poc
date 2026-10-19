@@ -24,7 +24,7 @@ type Props = {
 const STARTER_PROMPTS = [
   '我想在 MATRIX 做自己的公司後台，不懂程式，請用 Skills 一步步帶我（先講資料要存哪）。',
   '幫我看看這個工作區還缺什麼，並建議要先啟用哪些模組。',
-  '我想做類似 HIYEN 的後台，但不要一次全開，先從最小可用開始。',
+  '我想做公司營運後台，但不要一次全開，先從最小可用開始。',
 ]
 
 export function BuilderHubPanel({

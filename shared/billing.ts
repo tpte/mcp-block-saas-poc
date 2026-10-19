@@ -1,4 +1,4 @@
-/** Phase 3 billing spec (implementation deferred). */
+/** Internal billing spec — not exposed in product UI. */
 export type BillingPlan = 'free' | 'pro' | 'enterprise'
 
 export type UsageMeter = {

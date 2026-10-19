@@ -134,7 +134,7 @@ export function WorkspaceTeamPanel({
             </div>
             {lastToken ? (
               <p className="break-all rounded bg-[var(--bg)] p-2 font-mono text-[10px] text-[var(--muted)]">
-                邀請 token（PoC）：{lastToken}
+                邀請碼：{lastToken}
               </p>
             ) : null}
             {invites.length > 0 ? (
