@@ -45,6 +45,11 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
       )}
     >
       <div className={cn('mx-auto w-full', platform.composerWidth === 'wide' ? 'max-w-4xl' : 'max-w-[720px]')}>
+        {!top ? (
+          <p className="mb-1.5 text-xs font-medium text-[var(--muted)]" id="matrix-composer-label">
+            跟 Agent 對話
+          </p>
+        ) : null}
         {platform.suggestionsEnabled && suggestions.length > 0 ? (
           <div className="mb-2 flex flex-wrap gap-2">
             {suggestions.map((text, index) => (
@@ -77,6 +82,7 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder={platform.placeholder}
+            aria-labelledby={top ? undefined : 'matrix-composer-label'}
             className="min-w-0 flex-1 bg-transparent px-2 py-1.5 text-sm text-[var(--fg)] outline-none"
           />
           <Button type="submit" disabled={busy || !input.trim()}>

@@ -23,10 +23,11 @@ const KIND_ORDER: ResourceNodeKind[] = [
 type Props = {
   open: boolean
   onToggle: () => void
+  embedded?: boolean
   refreshKey: number
 }
 
-export function WorkspaceMapPanel({ open, onToggle, refreshKey }: Props) {
+export function WorkspaceMapPanel({ open, onToggle, embedded = false, refreshKey }: Props) {
   const [graph, setGraph] = useState<ResourceGraph | null>(null)
 
   useEffect(() => {
@@ -54,16 +55,24 @@ export function WorkspaceMapPanel({ open, onToggle, refreshKey }: Props) {
 
   if (!graph) return null
 
+  if (embedded && !open) return null
+
   return (
-    <section className="shrink-0 border-t border-[var(--line)] bg-[var(--bg)] px-4 py-2">
-      <button
-        type="button"
-        className="flex w-full items-center justify-between text-left text-xs font-medium text-[var(--muted)]"
-        onClick={onToggle}
-      >
-        工作區地圖（{graph.nodes.length} 資源 · {graph.edges.length} 連線）
-        <span>{open ? '▾' : '▸'}</span>
-      </button>
+    <section className={embedded ? 'max-h-[45vh] overflow-y-auto px-3 pb-3 pt-2' : 'shrink-0 border-t border-[var(--line)] bg-[var(--bg)] px-4 py-2'}>
+      {!embedded ? (
+        <button
+          type="button"
+          className="flex w-full items-center justify-between text-left text-xs font-medium text-[var(--muted)]"
+          onClick={onToggle}
+        >
+          工作區地圖（{graph.nodes.length} 資源 · {graph.edges.length} 連線）
+          <span>{open ? '▾' : '▸'}</span>
+        </button>
+      ) : (
+        <p className="mb-2 text-xs font-semibold text-[var(--muted)]">
+          工作區地圖（{graph.nodes.length} 資源 · {graph.edges.length} 連線）
+        </p>
+      )}
       {open ? (
         <div className="mt-2 max-h-56 space-y-3 overflow-y-auto text-xs">
           {grouped.map(([kind, nodes]) => (

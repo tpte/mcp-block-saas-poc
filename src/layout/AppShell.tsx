@@ -62,20 +62,20 @@ export function AppShell({
       : 'OpenRouter 未設定 Key'
   return (
     <div className="relative flex h-screen flex-col overflow-hidden bg-[var(--bg)] text-[var(--fg)]">
-      <header className="flex items-center justify-between px-5 py-3">
-        <div>
+      <header className="flex shrink-0 flex-col gap-2 border-b border-[var(--line)] px-4 py-2 md:flex-row md:items-center md:justify-between md:px-5 md:py-3">
+        <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="text-sm font-semibold tracking-tight">{platform.title}</p>
+            <p className="truncate text-sm font-semibold tracking-tight">{platform.title}</p>
             <Badge
-              className="border border-[var(--line)] bg-transparent text-[var(--muted)]"
+              className="hidden border border-[var(--line)] bg-transparent text-[var(--muted)] sm:inline-flex"
               title="與 HIYEN MATRIX 產品線無關"
             >
               {PRODUCT_NOT_HIYEN_LABEL}
             </Badge>
           </div>
-          <p className="text-xs text-[var(--muted)]">{platform.subtitle}</p>
+          <p className="hidden truncate text-xs text-[var(--muted)] sm:block">{platform.subtitle}</p>
         </div>
-        <div className="flex flex-wrap items-center justify-end gap-2">
+        <div className="-mx-1 flex max-w-full items-center gap-1.5 overflow-x-auto px-1 pb-0.5 md:mx-0 md:flex-wrap md:justify-end md:gap-2 md:overflow-visible md:pb-0">
           {showMobileNavButton && onToggleMobileNav ? (
             <Button type="button" size="sm" variant="outline" className="md:hidden" onClick={onToggleMobileNav}>
               模組
@@ -145,7 +145,7 @@ export function AppShell({
             {badgeLabel}
           </Badge>
           {platform.showModelBadge && health?.openRouterConfigured ? (
-            <Badge>
+            <Badge className="hidden shrink-0 lg:inline-flex">
               {health.model.split('/').pop()} → {health.providerOnly.join(', ')}
               {lastProvider ? ` · ${lastProvider}` : ''}
             </Badge>

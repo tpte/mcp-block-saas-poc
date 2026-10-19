@@ -19,6 +19,7 @@ import { useModuleCatalog } from './features/module/useModuleCatalog'
 import { useAgentSession } from './features/session/useAgentSession'
 import { WorkbenchPanel } from './features/workspace/WorkbenchPanel'
 import { WorkspaceMapPanel } from './features/workspace/WorkspaceMapPanel'
+import { WorkspaceToolsDock, type WorkspaceToolTab } from './features/workspace/WorkspaceToolsDock'
 import { AppShell } from './layout/AppShell'
 import type { BlockAction } from './types/ui'
 
@@ -33,6 +34,7 @@ export default function App() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [teamOpen, setTeamOpen] = useState(false)
   const [builderOpen, setBuilderOpen] = useState(false)
+  const [mobileToolTab, setMobileToolTab] = useState<WorkspaceToolTab>(null)
   const composerRef = useRef<ComposerHandle>(null)
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
@@ -40,13 +42,14 @@ export default function App() {
   const top = session.platform.composerPosition === 'top'
   const canEditCanvas = session.capabilities.canEditCanvas
   const canEditManifest = session.capabilities.canManageManifest
-  const bottomPanelsOpen = !isNarrow
+  const bottomPanelsOpen = false
 
   useEffect(() => {
     if (isNarrow) {
       setMapOpen(false)
       setWorkbenchOpen(false)
       setBuilderOpen(false)
+      setMobileToolTab(null)
     }
   }, [isNarrow])
 
@@ -57,12 +60,13 @@ export default function App() {
     if (localStorage.getItem(key) === 'done') return
     void fetchBuilderSetupContext().then(({ context }) => {
       if (context.dataSourceCount === 0 || context.gaps.length > 0) {
-        setBuilderOpen(true)
+        if (isNarrow) setMobileToolTab('builder')
+        else setBuilderOpen(true)
         session.showFlash('歡迎打造後台：可先規劃資料源，或點起步問題跟 Agent 對話', 'ok')
       }
       localStorage.setItem(key, 'done')
     })
-  }, [session.clientSession.workspaceId, session.offline, session.showFlash])
+  }, [session.clientSession.workspaceId, session.offline, session.showFlash, isNarrow])
 
   function handleBlockAction(action: BlockAction) {
     void session.runMcpInvoke(action.mcpTool, action.payload)
@@ -88,6 +92,61 @@ export default function App() {
       },
     })
   }, [session.platform, session.focusAdjacentBlock, session.focusedBlockId, session.canvas.blocks])
+
+  const builderPanel = (
+    <BuilderHubPanel
+      open={isNarrow ? mobileToolTab === 'builder' : builderOpen}
+      embedded={isNarrow}
+      onToggle={() => (isNarrow ? setMobileToolTab(null) : setBuilderOpen((v) => !v))}
+      canManageManifest={canEditManifest}
+      onAskAgent={(prompt) => void session.sendMessage(prompt)}
+      onApplied={() => {
+        void session.refreshBackend()
+        reloadCatalog()
+      }}
+      onFlash={session.showFlash}
+    />
+  )
+
+  const mapPanel = (
+    <WorkspaceMapPanel
+      open={isNarrow ? mobileToolTab === 'map' : mapOpen}
+      embedded={isNarrow}
+      onToggle={() => (isNarrow ? setMobileToolTab(null) : setMapOpen((v) => !v))}
+      refreshKey={session.opsRefreshKey}
+    />
+  )
+
+  const workbenchPanel = (
+    <WorkbenchPanel
+      open={isNarrow ? mobileToolTab === 'workbench' : workbenchOpen}
+      embedded={isNarrow}
+      onToggle={() => (isNarrow ? setMobileToolTab(null) : setWorkbenchOpen((v) => !v))}
+      canEdit={canEditManifest}
+      onSaved={() => {
+        void session.refreshBackend()
+        reloadCatalog()
+      }}
+    />
+  )
+
+  const debugPanels = session.platform.showToolTrace ? (
+    <>
+      <OpsInsightsPanel refreshKey={session.opsRefreshKey} defaultOpen={bottomPanelsOpen} />
+      <ToolTracePanel entries={session.traceLog} defaultOpen={bottomPanelsOpen} />
+    </>
+  ) : null
+
+  const composer = (
+    <Composer
+      ref={composerRef}
+      messages={session.messages}
+      platform={session.platform}
+      suggestions={session.suggestions}
+      busy={session.busy}
+      onSend={(text) => void session.sendMessage(text)}
+    />
+  )
 
   return (
     <AppShell
@@ -137,10 +196,10 @@ export default function App() {
             onRateReply={(logId, rating) => void session.rateAssistantReply(logId, rating)}
           />
         ) : null}
-        <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <div className="relative grid min-h-0 min-w-0 flex-1 grid-rows-[minmax(0,1fr)_auto] overflow-hidden">
           <main
             className={
-              top ? 'min-h-0 flex-1 overflow-y-auto px-6 pb-8 pt-44' : 'min-h-0 flex-1 overflow-y-auto px-6 pb-4 pt-2'
+              top ? 'min-h-0 overflow-y-auto px-4 pb-6 pt-44 md:px-6' : 'min-h-0 overflow-y-auto px-4 pb-3 pt-2 md:px-6'
             }
           >
             {session.trace.length > 0 ? (
@@ -170,44 +229,45 @@ export default function App() {
               onDeleteBlock={canEditCanvas ? (id) => void session.removeBlock(id) : undefined}
             />
           </main>
-          <div className="flex min-h-0 shrink-0 flex-col overflow-y-auto overscroll-contain">
-            <BuilderHubPanel
-              open={builderOpen}
-              onToggle={() => setBuilderOpen((v) => !v)}
-              canManageManifest={canEditManifest}
-              onAskAgent={(prompt) => void session.sendMessage(prompt)}
-              onApplied={() => {
-                void session.refreshBackend()
-                reloadCatalog()
-              }}
-              onFlash={session.showFlash}
-            />
-            <WorkspaceMapPanel open={mapOpen} onToggle={() => setMapOpen((v) => !v)} refreshKey={session.opsRefreshKey} />
-            <WorkbenchPanel
-              open={workbenchOpen}
-              onToggle={() => setWorkbenchOpen((v) => !v)}
-              canEdit={canEditManifest}
-              onSaved={() => {
-                void session.refreshBackend()
-                reloadCatalog()
-              }}
-            />
-            {session.platform.showToolTrace ? (
+          <div className="flex min-h-0 flex-col shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.15)]">
+            {isNarrow ? (
               <>
-                <OpsInsightsPanel refreshKey={session.opsRefreshKey} defaultOpen={bottomPanelsOpen} />
-                <ToolTracePanel entries={session.traceLog} defaultOpen={bottomPanelsOpen} />
+                {composer}
+                <WorkspaceToolsDock
+                  compact
+                  activeTab={mobileToolTab}
+                  onTabChange={setMobileToolTab}
+                  builder={builderPanel}
+                  map={mapPanel}
+                  workbench={workbenchPanel}
+                  debug={
+                    <>
+                      {debugPanels}
+                      <AgentTopologyPanel runId={session.lastRunId} />
+                    </>
+                  }
+                />
               </>
-            ) : null}
-            <AgentTopologyPanel runId={session.lastRunId} />
+            ) : (
+              <>
+                <WorkspaceToolsDock
+                  compact={false}
+                  activeTab={null}
+                  onTabChange={() => {}}
+                  builder={builderPanel}
+                  map={mapPanel}
+                  workbench={workbenchPanel}
+                  debug={
+                    <>
+                      {debugPanels}
+                      <AgentTopologyPanel runId={session.lastRunId} />
+                    </>
+                  }
+                />
+                {composer}
+              </>
+            )}
           </div>
-          <Composer
-            ref={composerRef}
-            messages={session.messages}
-            platform={session.platform}
-            suggestions={session.suggestions}
-            busy={session.busy}
-            onSend={(text) => void session.sendMessage(text)}
-          />
         </div>
       </div>
       <CommandPalette

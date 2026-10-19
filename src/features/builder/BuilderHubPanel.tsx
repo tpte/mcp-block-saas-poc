@@ -14,6 +14,7 @@ import { BuilderSkillsPanel } from './BuilderSkillsPanel'
 type Props = {
   open: boolean
   onToggle: () => void
+  embedded?: boolean
   canManageManifest: boolean
   onAskAgent: (prompt: string) => void
   onApplied: () => void
@@ -33,6 +34,7 @@ export function BuilderHubPanel({
   onAskAgent,
   onApplied,
   onFlash,
+  embedded = false,
 }: Props) {
   const [ctx, setCtx] = useState<BuilderSetupContext | null>(null)
   const [templates, setTemplates] = useState<BuilderTemplateMeta[]>([])
@@ -67,6 +69,7 @@ export function BuilderHubPanel({
   }
 
   if (!open) {
+    if (embedded) return null
     return (
       <section className="shrink-0 border-t border-[var(--line)] bg-[var(--bg)] px-4 py-2">
         <button type="button" className="text-xs font-medium text-[var(--muted)]" onClick={onToggle}>
@@ -76,8 +79,12 @@ export function BuilderHubPanel({
     )
   }
 
+  const shellClass = embedded
+    ? 'max-h-[45vh] overflow-y-auto px-3 pb-3 pt-2'
+    : 'max-h-[min(42vh,420px)] shrink-0 overflow-y-auto border-t border-[var(--line)] bg-[var(--bg)] px-4 py-3'
+
   return (
-    <section className="max-h-[min(42vh,420px)] shrink-0 overflow-y-auto border-t border-[var(--line)] bg-[var(--bg)] px-4 py-3">
+    <section className={shellClass}>
       <div className="mb-2 flex items-center justify-between">
         <p className="text-xs font-semibold text-[var(--muted)]">打造後台 · Agent + Skills</p>
         <button type="button" className="text-xs text-[var(--muted)]" onClick={onToggle}>

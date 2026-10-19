@@ -59,11 +59,14 @@ export function BlockCanvas({
 
   if (canvas.blocks.length === 0) {
     return (
-      <div className="flex h-full flex-col items-center justify-center px-6 text-center">
+      <div className="flex min-h-[min(52vh,420px)] flex-col items-center justify-center px-4 py-8 text-center md:px-6">
         <p className="text-3xl font-semibold tracking-tight">{platform.title}</p>
         <p className="mt-2 max-w-md text-sm text-[var(--muted)]">
           {platform.subtitle}。說你想看什麼，或用 ⌘K／左側模組直達 MCP。
         </p>
+        {platform.suggestionsEnabled && platform.composerPosition === 'bottom' ? (
+          <p className="mt-4 text-xs text-[var(--muted)]">↓ 在下方「跟 Agent 對話」輸入，或點建議快速開始</p>
+        ) : null}
         {platform.suggestionsEnabled && platform.composerPosition !== 'bottom' ? (
           <div className="mt-6 flex flex-wrap justify-center gap-2">
             {suggestions.map((text, index) => (
