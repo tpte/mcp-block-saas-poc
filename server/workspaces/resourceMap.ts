@@ -44,7 +44,7 @@ export async function buildResourceGraph(workspaceId: string, workspaceName: str
     })
   }
 
-  const dsList = await probeAllDataSources(manifest.dataSources)
+  const dsList = await probeAllDataSources(manifest.dataSources, workspaceId)
   for (const ds of dsList) {
     nodes.push({
       id: `ds:${ds.id}`,

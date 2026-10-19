@@ -107,6 +107,7 @@ export function BuilderHubPanel({
         <DataSourcePlanForm
           canManage={canManageManifest}
           existing={ctx?.dataSources ?? []}
+          messages={ctx?.dataSourceMessages}
           onSaved={() => {
             reloadContext()
             onApplied()

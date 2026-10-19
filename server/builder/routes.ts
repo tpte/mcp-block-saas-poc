@@ -3,7 +3,9 @@ import { sessionFromHeaders } from '../context.ts'
 import { requireMinRole } from '../workspaces/rbac.ts'
 import { loadManifest } from '../workspaces/manifest.ts'
 import { listBuilderSkills, readBuilderSkill, searchBuilderKnowledge } from './registry.ts'
-import { analyzeSetupContext } from './setupContext.ts'
+import { analyzeSetupContext, analyzeSetupContextAsync } from './setupContext.ts'
+import { describeDataSourceForUser } from '../datasource/builtin.ts'
+import { probeAllDataSources } from '../workspaces/datasource.ts'
 import { listWorkspaceTemplateMeta } from '../../shared/workspaceTemplates.ts'
 import { canManageManifest } from '../workspaces/rbac.ts'
 import { RbacError } from '../workspaces/rbac.ts'
@@ -26,11 +28,41 @@ export function registerBuilderRoutes(app: Hono) {
     return c.json({ templates: listWorkspaceTemplateMeta() })
   })
 
-  app.get('/api/builder/setup-context', (c) => {
+  app.get('/api/builder/setup-context', async (c) => {
     const session = sessionFromHeaders(c)
     requireMinRole(session, 'member')
     const manifest = loadManifest(session.workspace.id, session.workspace.name)
-    return c.json({ context: analyzeSetupContext(manifest) })
+    const context = await analyzeSetupContextAsync(manifest, session.workspace.id)
+    return c.json({ context })
+  })
+
+  app.post('/api/builder/data-sources/quick-sqlite', async (c) => {
+    const session = sessionFromHeaders(c)
+    try {
+      if (!canManageManifest(session)) throw new RbacError('需要 admin')
+      const body = await c.req.json<{ label?: string }>()
+      const record = validateDataSourceInput({
+        label: body.label?.trim() || '本機業務資料庫',
+        type: 'sqlite',
+        secretRef: 'builtin:workspace-sqlite',
+      })
+      const manifest = commitManifestPatch(session, { appendDataSource: record })
+      const [probed] = await probeAllDataSources(manifest.dataSources.filter((d) => d.id === record.id), session.workspace.id)
+      return c.json({
+        ok: true,
+        dataSource: probed,
+        message: describeDataSourceForUser({
+          label: probed.label,
+          type: probed.type,
+          secretRef: probed.secretRef,
+          health: probed.health ?? 'unknown',
+        }),
+      })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'failed'
+      const status = err instanceof RbacError ? 403 : 400
+      return c.json({ error: message }, status)
+    }
   })
 
   app.get('/api/builder/skills/:id', (c) => {

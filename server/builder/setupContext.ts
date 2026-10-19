@@ -2,6 +2,8 @@ import { MCP_TOOL_NAMES } from '../mcp/handlers.ts'
 import { buildMcpCatalog } from '../mcp/catalog.ts'
 import type { DataSourceRecord, WorkspaceManifest } from '../../shared/workspaceManifest.ts'
 import { listBuilderSkills } from './registry.ts'
+import { describeDataSourceForUser } from '../datasource/builtin.ts'
+import { probeAllDataSources } from '../workspaces/datasource.ts'
 
 export type SetupContext = {
   displayName: string
@@ -13,6 +15,31 @@ export type SetupContext = {
   enabledCatalogIds: string[]
   catalogOptions: { id: string; label: string; group: string }[]
   dataSources: Pick<DataSourceRecord, 'id' | 'label' | 'type' | 'secretRef' | 'health'>[]
+  dataSourceMessages: string[]
+}
+
+export async function analyzeSetupContextAsync(manifest: WorkspaceManifest, workspaceId: string) {
+  const base = analyzeSetupContext(manifest)
+  const probed = await probeAllDataSources(manifest.dataSources, workspaceId)
+  const dataSourceMessages = probed.map((d) =>
+    describeDataSourceForUser({
+      label: d.label,
+      type: d.type,
+      secretRef: d.secretRef,
+      health: d.health ?? 'unknown',
+    }),
+  )
+  return {
+    ...base,
+    dataSources: probed.map((d) => ({
+      id: d.id,
+      label: d.label,
+      type: d.type,
+      secretRef: d.secretRef,
+      health: d.health,
+    })),
+    dataSourceMessages,
+  }
 }
 
 export function analyzeSetupContext(manifest: WorkspaceManifest): SetupContext {
@@ -53,6 +80,7 @@ export function analyzeSetupContext(manifest: WorkspaceManifest): SetupContext {
       secretRef: d.secretRef,
       health: d.health,
     })),
+    dataSourceMessages: [],
   }
 }
 

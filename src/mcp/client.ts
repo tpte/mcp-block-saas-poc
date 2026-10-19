@@ -386,6 +386,7 @@ export type BuilderSetupContext = {
   enabledCatalogIds: string[]
   catalogOptions: BuilderCatalogOption[]
   dataSources: BuilderDataSourceSummary[]
+  dataSourceMessages: string[]
 }
 
 export type BuilderTemplateMeta = { id: string; label: string; description: string }
@@ -414,6 +415,16 @@ export async function previewBuilderManifest(input: {
   })
   await assertOk(res)
   return res.json() as Promise<{ summary: string; diff: { type: string; text: string }[] }>
+}
+
+export async function quickBuilderSqlite(label?: string) {
+  const res = await apiFetch('/api/builder/data-sources/quick-sqlite', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ label }),
+  })
+  await assertOk(res)
+  return res.json() as Promise<{ ok: boolean; message: string }>
 }
 
 export async function addBuilderDataSource(input: {

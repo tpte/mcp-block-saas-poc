@@ -2,6 +2,7 @@ import type { DataSourceRecord, WorkspaceManifest } from '../../shared/workspace
 import { diffManifestLines, loadManifest, saveManifest } from '../workspaces/manifest.ts'
 import type { SessionContext } from '../../shared/domain.ts'
 import { logManifestEdit } from '../ops/record.ts'
+import { ensureWorkspaceSqlite, isBuiltinSecretRef } from '../datasource/builtin.ts'
 
 const DS_TYPES = ['postgres', 'supabase', 'sqlite', 'http_api'] as const
 
@@ -43,6 +44,9 @@ export function appendManifestDataSource(session: SessionContext, record: DataSo
     throw new Error(`資料源 id 已存在：${record.id}`)
   }
   manifest.dataSources.push(record)
+  if (isBuiltinSecretRef(record.secretRef) && record.secretRef === 'builtin:workspace-sqlite') {
+    ensureWorkspaceSqlite(session.workspace.id, record.id)
+  }
   saveManifest(session.workspace.id, manifest)
   logManifestEdit(session, manifest.revision)
   return manifest
@@ -86,6 +90,11 @@ export function applyManifestPatch(manifest: WorkspaceManifest, patch: ManifestP
 export function commitManifestPatch(session: SessionContext, patch: ManifestPatchInput) {
   const current = loadManifest(session.workspace.id, session.workspace.name)
   const next = applyManifestPatch(current, patch)
+  if (patch.appendDataSource && isBuiltinSecretRef(patch.appendDataSource.secretRef)) {
+    if (patch.appendDataSource.secretRef === 'builtin:workspace-sqlite') {
+      ensureWorkspaceSqlite(session.workspace.id, patch.appendDataSource.id)
+    }
+  }
   saveManifest(session.workspace.id, next)
   logManifestEdit(session, next.revision)
   return next

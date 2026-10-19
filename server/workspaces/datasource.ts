@@ -1,7 +1,14 @@
 import type { DataSourceRecord } from '../../shared/workspaceManifest.ts'
 import { getOpenRouterKey } from '../env.ts'
+import { isBuiltinSecretRef, probeBuiltinDataSource } from '../datasource/builtin.ts'
 
-export async function probeDataSource(ds: DataSourceRecord): Promise<DataSourceRecord['health']> {
+export async function probeDataSource(
+  ds: DataSourceRecord,
+  workspaceId?: string,
+): Promise<DataSourceRecord['health']> {
+  if (workspaceId && isBuiltinSecretRef(ds.secretRef)) {
+    return probeBuiltinDataSource(workspaceId, ds.secretRef, ds.id)
+  }
   if (ds.type === 'http_api') {
     const url = process.env[ds.secretRef.replace(/^env:/, '')]
     if (!url) return 'unknown'
@@ -20,11 +27,11 @@ export async function probeDataSource(ds: DataSourceRecord): Promise<DataSourceR
   return 'unknown'
 }
 
-export async function probeAllDataSources(sources: DataSourceRecord[]) {
+export async function probeAllDataSources(sources: DataSourceRecord[], workspaceId?: string) {
   return Promise.all(
     sources.map(async (ds) => ({
       ...ds,
-      health: await probeDataSource(ds),
+      health: await probeDataSource(ds, workspaceId),
     })),
   )
 }

@@ -1,6 +1,11 @@
 import { useState } from 'react'
 import { Button } from '../../components/ui/button'
-import { addBuilderDataSource, previewBuilderManifest, type BuilderDataSourceSummary } from '../../mcp/client'
+import {
+  addBuilderDataSource,
+  previewBuilderManifest,
+  quickBuilderSqlite,
+  type BuilderDataSourceSummary,
+} from '../../mcp/client'
 import { ManifestDiffPreview } from './ManifestDiffPreview'
 
 const TYPES = [
@@ -13,12 +18,13 @@ const TYPES = [
 type Props = {
   canManage: boolean
   existing: BuilderDataSourceSummary[]
+  messages?: string[]
   onSaved: () => void
   onFlash: (text: string, variant?: 'error' | 'ok') => void
   onAskAgent: (prompt: string) => void
 }
 
-export function DataSourcePlanForm({ canManage, existing, onSaved, onFlash, onAskAgent }: Props) {
+export function DataSourcePlanForm({ canManage, existing, messages = [], onSaved, onFlash, onAskAgent }: Props) {
   const [label, setLabel] = useState('主要業務資料庫')
   const [type, setType] = useState<(typeof TYPES)[number]['value']>('postgres')
   const [busy, setBusy] = useState(false)
@@ -68,10 +74,23 @@ export function DataSourcePlanForm({ canManage, existing, onSaved, onFlash, onAs
         </Button>
       </div>
       {existing.length > 0 ? (
-        <ul className="mb-2 space-y-0.5 text-[10px] text-[var(--muted)]">
-          {existing.map((d) => (
-            <li key={d.id}>
-              {d.label} · {d.type} · <span className="font-mono">{d.secretRef}</span>
+        <ul className="mb-2 space-y-1 text-[10px]">
+          {existing.map((d, i) => (
+            <li key={d.id} className="text-[var(--muted)]">
+              {messages[i] ?? `${d.label} · ${d.type} · ${d.secretRef}`}
+              {d.health ? (
+                <span
+                  className={
+                    d.health === 'healthy'
+                      ? ' ml-1 text-emerald-600'
+                      : d.health === 'unknown'
+                        ? ' ml-1 text-amber-600'
+                        : ' ml-1 text-red-600'
+                  }
+                >
+                  ({d.health})
+                </span>
+              ) : null}
             </li>
           ))}
         </ul>
@@ -98,6 +117,25 @@ export function DataSourcePlanForm({ canManage, existing, onSaved, onFlash, onAs
             </option>
           ))}
         </select>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          disabled={!canManage || busy}
+          onClick={() => {
+            setBusy(true)
+            void quickBuilderSqlite(label.trim() || '本機業務資料庫')
+              .then((r) => {
+                onFlash(r.message, 'ok')
+                setPreview(null)
+                onSaved()
+              })
+              .catch((err) => onFlash(err instanceof Error ? err.message : '建立失敗'))
+              .finally(() => setBusy(false))
+          }}
+        >
+          一鍵本機 SQLite
+        </Button>
         <Button type="button" size="sm" variant="outline" disabled={!canManage || !label.trim()} onClick={() => void runPreview()}>
           預覽
         </Button>
