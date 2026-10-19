@@ -21,15 +21,10 @@ export function MatrixHomeHero({ workspaceName }: Props) {
         }}
       />
       <div className="relative max-w-lg text-center">
-        <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.35em] text-cyan-600/90 dark:text-cyan-400/90">
-          AI · MCP · Blocks
-        </p>
-        <h1 className="bg-gradient-to-br from-[var(--fg)] via-[var(--fg)] to-cyan-600/80 bg-clip-text text-4xl font-semibold tracking-tight text-transparent md:text-5xl">
-          {PRODUCT_NAME}
-        </h1>
+        <h1 className="text-4xl font-semibold tracking-tight md:text-5xl">{PRODUCT_NAME}</h1>
         <p className="mt-4 text-sm leading-relaxed text-[var(--muted)]">
-          {workspaceName ? `${workspaceName} · ` : ''}
-          從下方 Dock 進入 SPACE；在 SPACE 內用 MCP 協作渲染整頁 Block。建置請到該 SPACE 的 Studio。
+          {workspaceName ? `目前是「${workspaceName}」。` : ''}
+          選下方工作區，開始跟 Agent 對話。
         </p>
       </div>
     </div>

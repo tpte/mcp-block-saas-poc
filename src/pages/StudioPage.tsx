@@ -20,6 +20,7 @@ export function StudioPage() {
   const [mapOpen, setMapOpen] = useState(false)
   const [workbenchOpen, setWorkbenchOpen] = useState(false)
   const [mobileToolTab, setMobileToolTab] = useState<WorkspaceToolTab>('builder')
+  const [debugOpen, setDebugOpen] = useState(false)
   const { reload: reloadCatalog } = useModuleCatalog(session.clientSession.workspaceId)
   const canEditManifest = session.capabilities.canManageManifest
 
@@ -29,7 +30,7 @@ export function StudioPage() {
     if (localStorage.getItem(key) === 'done') return
     void fetchBuilderSetupContext().then(({ context }) => {
       if (context.dataSourceCount === 0 || context.gaps.length > 0) {
-        session.showFlash('Studio：可先規劃資料源與 MODULE（MCP）', 'ok')
+        session.showFlash('可以先接上資料，再讓 Agent 畫出畫面', 'ok')
       }
       localStorage.setItem(key, 'done')
     })
@@ -55,11 +56,20 @@ export function StudioPage() {
       <div className="flex shrink-0 items-center justify-between border-b border-[var(--line)] px-4 py-2">
         <div>
           <p className="text-sm font-semibold">Studio</p>
-          <p className="text-xs text-[var(--muted)]">MODULE（MCP）· BLOCK · manifest · 資料源</p>
+          <p className="text-xs text-[var(--muted)]">調整這個工作區的資料與版面</p>
         </div>
-        <Link to={`/w/${slug}`} className="text-xs text-cyan-700 hover:underline dark:text-cyan-400">
-          ← 回 SPACE
-        </Link>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            className="text-xs text-[var(--muted)] hover:text-[var(--fg)]"
+            onClick={() => setDebugOpen((v) => !v)}
+          >
+            {debugOpen ? '隱藏除錯' : '除錯'}
+          </button>
+          <Link to={`/w/${slug}`} className="text-xs text-cyan-700 hover:underline dark:text-cyan-400">
+            ← 回到工作區
+          </Link>
+        </div>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
         {isNarrow ? (
@@ -89,15 +99,13 @@ export function StudioPage() {
               />
             }
             debug={
-              <>
-                {session.platform.showToolTrace ? (
-                  <>
-                    <OpsInsightsPanel refreshKey={session.opsRefreshKey} defaultOpen={false} />
-                    <ToolTracePanel entries={session.traceLog} defaultOpen={false} />
-                  </>
-                ) : null}
-                <AgentTopologyPanel runId={session.lastRunId} />
-              </>
+              debugOpen ? (
+                <>
+                  <OpsInsightsPanel refreshKey={session.opsRefreshKey} defaultOpen={false} />
+                  <ToolTracePanel entries={session.traceLog} defaultOpen={false} />
+                  <AgentTopologyPanel runId={session.lastRunId} />
+                </>
+              ) : null
             }
           />
         ) : (
@@ -113,13 +121,13 @@ export function StudioPage() {
                 reloadCatalog()
               }}
             />
-            {session.platform.showToolTrace ? (
+            {debugOpen ? (
               <>
                 <OpsInsightsPanel refreshKey={session.opsRefreshKey} defaultOpen={false} />
                 <ToolTracePanel entries={session.traceLog} defaultOpen={false} />
+                <AgentTopologyPanel runId={session.lastRunId} />
               </>
             ) : null}
-            <AgentTopologyPanel runId={session.lastRunId} />
           </>
         )}
       </div>

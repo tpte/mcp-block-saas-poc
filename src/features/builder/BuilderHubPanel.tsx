@@ -86,14 +86,11 @@ export function BuilderHubPanel({
   return (
     <section className={shellClass}>
       <div className="mb-2 flex items-center justify-between">
-        <p className="text-xs font-semibold text-[var(--muted)]">打造後台 · Agent + Skills</p>
+        <p className="text-xs font-semibold text-[var(--muted)]">先接資料，再決定要看什麼</p>
         <button type="button" className="text-xs text-[var(--muted)]" onClick={onToggle}>
           ▾ 收合
         </button>
       </div>
-      <p className="mb-2 text-[11px] text-[var(--muted)]">
-        引導內容來自 <code className="text-[10px]">builder/skills</code> 與 RAG，不是寫死精靈。細節跟 Agent 共創；下方模板僅供還原起步。
-      </p>
       {ctx ? (
         <div className="mb-3 rounded border border-[var(--line)] bg-[var(--bg)]/50 p-2 text-[11px]">
           <p>

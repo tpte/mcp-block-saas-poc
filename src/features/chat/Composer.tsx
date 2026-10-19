@@ -10,6 +10,7 @@ export type ComposerHandle = {
 }
 
 type Props = {
+  scopeId: string
   messages: ChatMessage[]
   platform: PlatformConfig
   suggestions: string[]
@@ -17,13 +18,23 @@ type Props = {
   onSend: (text: string) => void
 }
 
+const drafts = new Map<string, string>()
+
 export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
-  { platform, suggestions, busy, onSend },
+  { scopeId, platform, suggestions, busy, onSend },
   ref,
 ) {
-  const [input, setInput] = useState('')
+  const [input, setInput] = useState(() => drafts.get(scopeId) ?? '')
   const inputRef = useRef<HTMLInputElement>(null)
+  const scopeRef = useRef(scopeId)
   const top = platform.composerPosition === 'top'
+
+  if (scopeRef.current !== scopeId) {
+    drafts.set(scopeRef.current, inputRef.current?.value ?? input)
+    scopeRef.current = scopeId
+    const next = drafts.get(scopeId) ?? ''
+    if (next !== input) setInput(next)
+  }
 
   useImperativeHandle(ref, () => ({
     focus: () => inputRef.current?.focus(),
@@ -45,13 +56,8 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
       )}
     >
       <div className={cn('mx-auto w-full', platform.composerWidth === 'wide' ? 'max-w-4xl' : 'max-w-[720px]')}>
-        {!top ? (
-          <p className="mb-1.5 text-xs font-medium text-[var(--muted)]" id="matrix-composer-label">
-            跟 Agent 對話
-          </p>
-        ) : null}
         {platform.suggestionsEnabled && suggestions.length > 0 ? (
-          <div className="mb-2 flex flex-wrap gap-2">
+          <div className="mb-2 flex gap-2 overflow-x-auto pb-1">
             {suggestions.map((text, index) => (
               <button
                 key={`${index}-${text}`}
@@ -62,7 +68,7 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
                   e.stopPropagation()
                   onSend(text)
                 }}
-                className="cursor-pointer rounded-full border border-[var(--line)] bg-[var(--card)] px-3 py-1 text-xs text-[var(--fg)] hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
+                className="shrink-0 cursor-pointer whitespace-nowrap rounded-full border border-[var(--line)] bg-[var(--card)] px-3 py-1 text-xs text-[var(--fg)] hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {text}
               </button>
@@ -80,9 +86,12 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
           <input
             ref={inputRef}
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={(e) => {
+              drafts.set(scopeId, e.target.value)
+              setInput(e.target.value)
+            }}
             placeholder={platform.placeholder}
-            aria-labelledby={top ? undefined : 'matrix-composer-label'}
+            aria-label={platform.placeholder || '跟 Agent 說你想看什麼'}
             className="min-w-0 flex-1 bg-transparent px-2 py-1.5 text-sm text-[var(--fg)] outline-none"
           />
           <Button type="submit" disabled={busy || !input.trim()}>

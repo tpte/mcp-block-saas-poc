@@ -39,7 +39,6 @@ export function SpacePage() {
       onFocusBlock={session.setFocusedBlockId}
       expandedBlock={expandedBlock}
       onExpandBlock={setExpandedBlock}
-      onAddTemplate={canEditCanvas ? (id) => void session.addBlockFromTemplate(id) : undefined}
       onSaveBlockProps={
         canEditCanvas ? (blockId, props) => void session.updateBlockProps(blockId, props) : undefined
       }
@@ -54,14 +53,10 @@ export function SpacePage() {
           top ? 'min-h-0 overflow-y-auto px-4 pb-4 pt-44 md:px-6' : 'min-h-0 overflow-y-auto px-4 pb-3 pt-2 md:px-6'
         }
       >
-        {session.trace.length > 0 ? (
-          <ol className="mx-auto mb-4 w-full max-w-6xl space-y-1 text-xs text-[var(--muted)]">
-            {session.trace.map((line, index) => (
-              <li key={`${line}-${index}`}>
-                {session.busy && index === session.trace.length - 1 ? `▸ ${line}` : line}
-              </li>
-            ))}
-          </ol>
+        {session.busy && session.trace.length > 0 ? (
+          <p className="mx-auto mb-3 w-full max-w-6xl text-xs text-[var(--muted)]">
+            {session.trace[session.trace.length - 1]}
+          </p>
         ) : null}
         {spaceProfile === 'ide' ? (
           <IdeSpaceView slug={slug} canvas={canvasBlock} />
@@ -71,6 +66,7 @@ export function SpacePage() {
       </main>
       <Composer
         ref={composerRef}
+        scopeId={session.clientSession.workspaceId}
         messages={session.messages}
         platform={session.platform}
         suggestions={session.suggestions}

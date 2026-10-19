@@ -1,5 +1,6 @@
 import { Navigate, useParams } from 'react-router-dom'
 import { LAST_SPACE_SLUG_KEY } from '../features/session/workspaceUiCache'
+import { HomePage } from '../pages/HomePage'
 
 export function RedirectModuleRoute() {
   const slug = localStorage.getItem(LAST_SPACE_SLUG_KEY) ?? 'personal'
@@ -14,7 +15,7 @@ export function RedirectGlobalStudio() {
 export function HomeOrLastSpace() {
   const last = localStorage.getItem(LAST_SPACE_SLUG_KEY)
   if (last) return <Navigate to={`/w/${last}`} replace />
-  return null
+  return <HomePage />
 }
 
 export function RedirectStudioWithSlug() {

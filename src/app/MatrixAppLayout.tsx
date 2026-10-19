@@ -7,12 +7,11 @@ import { ShortcutsHelpModal } from '../features/keyboard/ShortcutsHelpModal'
 import { useModuleCatalog } from '../features/module/useModuleCatalog'
 import { AgentSessionProvider, useAgentSessionContext } from '../features/session/AgentSessionContext'
 import { WorkspaceDock } from '../features/workspace/WorkspaceDock'
-import { WorkspaceTeamPanel } from '../features/workspace/WorkspaceTeamPanel'
-import { HomePage } from '../pages/HomePage'
 import { MePage } from '../pages/MePage'
 import { SpacePage } from '../pages/SpacePage'
 import { StudioPage } from '../pages/StudioPage'
 import {
+  HomeOrLastSpace,
   RedirectGlobalStudio,
   RedirectModuleRoute,
 } from './RedirectLegacyRoutes'
@@ -27,10 +26,8 @@ function MatrixAppInner() {
   const slug = spaceMatch?.params.slug
   const isStudio = Boolean(location.pathname.includes('/studio'))
   const isMe = location.pathname === '/me'
-  const isHome = location.pathname === '/'
   const activeWs = session.workspaces.find((w) => w.id === session.clientSession.workspaceId)
   const { items: catalogItems, reload: reloadCatalog } = useModuleCatalog(session.clientSession.workspaceId)
-  const [teamOpen, setTeamOpen] = useState(false)
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const composerRef = useRef<ComposerHandle>(null)
@@ -57,30 +54,18 @@ function MatrixAppInner() {
     <AppShell
       health={session.health}
       platform={{ ...session.platform, title: headerTitle }}
-      lastProvider={session.lastProvider}
       offline={session.offline}
-      agents={session.agents}
-      activeAgentId={session.clientSession.agentId}
-      onAgentChange={session.selectAgent}
-      capabilities={session.capabilities}
-      onOpenTeam={() => setTeamOpen(true)}
       flash={session.flash}
       onDismissFlash={session.clearFlash}
-      navHomeActive={isHome}
-      navStudioActive={isStudio}
       navMeActive={isMe}
       onNavHome={() => navigate('/')}
-      onNavStudio={() => {
-        const s = slug ?? activeWs?.slug ?? 'personal'
-        navigate(`/w/${s}/studio`)
-      }}
       onNavMe={() => navigate('/me')}
-      showSpaceContext={Boolean(slug)}
+      showSpaceContext={Boolean(slug) && !isStudio}
     >
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <Routes>
-            <Route path="/" element={<HomePage />} />
+            <Route path="/" element={<HomeOrLastSpace />} />
             <Route
               path="/w/:slug"
               element={
@@ -124,15 +109,6 @@ function MatrixAppInner() {
         }}
       />
       <ShortcutsHelpModal open={shortcutsOpen} platform={session.platform} onClose={() => setShortcutsOpen(false)} />
-      <WorkspaceTeamPanel
-        open={teamOpen}
-        onClose={() => setTeamOpen(false)}
-        workspaceId={session.clientSession.workspaceId}
-        canInvite={session.capabilities.canInvite}
-        members={session.workspaceMembers}
-        onAccepted={() => void session.refreshBackend()}
-        onFlash={session.showFlash}
-      />
     </AppShell>
   )
 }

@@ -1,28 +1,16 @@
 import type { ReactNode } from 'react'
-import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
-import type { Agent } from '../../shared/domain.ts'
-import { PRODUCT_NOT_HIYEN_LABEL } from '../../shared/product.ts'
-import type { HealthInfo, PlatformConfig, SessionCapabilities } from '../mcp/client'
+import type { HealthInfo, PlatformConfig } from '../mcp/client'
 import { FlashBanner } from '../features/ui/FlashBanner'
 
 type Props = {
   health: HealthInfo | null
   platform: PlatformConfig
-  lastProvider: string | null
   offline: boolean
-  agents: Agent[]
-  activeAgentId: string
-  onAgentChange: (agentId: string) => void
-  capabilities?: SessionCapabilities
-  onOpenTeam?: () => void
   flash?: { text: string; variant: 'error' | 'ok' } | null
   onDismissFlash?: () => void
-  navHomeActive?: boolean
-  navStudioActive?: boolean
   navMeActive?: boolean
   onNavHome?: () => void
-  onNavStudio?: () => void
   onNavMe?: () => void
   showSpaceContext?: boolean
   children: ReactNode
@@ -31,104 +19,52 @@ type Props = {
 export function AppShell({
   health,
   platform,
-  lastProvider,
   offline,
-  agents,
-  activeAgentId,
-  onAgentChange,
-  capabilities,
-  onOpenTeam,
   flash,
   onDismissFlash,
-  navHomeActive,
-  navStudioActive,
   navMeActive,
   onNavHome,
-  onNavStudio,
   onNavMe,
   showSpaceContext,
   children,
 }: Props) {
   const apiUp = !offline && Boolean(health?.ok)
   const connected = apiUp && Boolean(health?.openRouterConfigured)
-  const badgeLabel = offline
-    ? import.meta.env.PROD
-      ? 'API 未連線'
-      : 'API 未連線（請 npm run dev:all）'
+  const statusLabel = offline
+    ? '未連線'
     : connected
-      ? 'OpenRouter 已連線'
-      : 'OpenRouter 未設定 Key'
+      ? '可對話'
+      : '尚未設定模型'
+  const pageTitle = showSpaceContext ? platform.title : navMeActive ? '我' : 'MATRIX'
   return (
     <div className="relative flex h-screen flex-col overflow-hidden bg-[var(--bg)] text-[var(--fg)]">
-      <header className="flex shrink-0 flex-col gap-2 border-b border-[var(--line)] px-4 py-2 md:flex-row md:items-center md:justify-between md:px-5 md:py-3">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="truncate text-sm font-semibold tracking-tight">{platform.title}</p>
-            {showSpaceContext ? (
-              <Badge className="border border-[var(--line)] bg-transparent text-[10px] text-[var(--muted)]">
-                SPACE
-              </Badge>
-            ) : (
-              <Badge
-                className="hidden border border-[var(--line)] bg-transparent text-[var(--muted)] sm:inline-flex"
-                title="與 HIYEN MATRIX 產品線無關"
-              >
-                {PRODUCT_NOT_HIYEN_LABEL}
-              </Badge>
-            )}
-          </div>
-          <p className="hidden truncate text-xs text-[var(--muted)] sm:block">{platform.subtitle}</p>
-        </div>
-        <div className="-mx-1 flex max-w-full items-center gap-1.5 overflow-x-auto px-1 pb-0.5 md:mx-0 md:flex-wrap md:justify-end md:gap-2 md:overflow-visible md:pb-0">
+      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-[var(--line)] px-4 py-2.5 md:px-5">
+        <div className="flex min-w-0 items-center gap-3">
           {onNavHome ? (
-            <Button type="button" size="sm" variant={navHomeActive ? 'default' : 'outline'} className="text-xs" onClick={onNavHome}>
+            <button
+              type="button"
+              className="shrink-0 text-sm font-semibold tracking-tight"
+              onClick={onNavHome}
+            >
               MATRIX
-            </Button>
+            </button>
+          ) : (
+            <p className="text-sm font-semibold tracking-tight">MATRIX</p>
+          )}
+          {showSpaceContext ? (
+            <p className="truncate text-sm text-[var(--muted)]">{pageTitle}</p>
           ) : null}
-          {onNavStudio && showSpaceContext ? (
-            <Button type="button" size="sm" variant={navStudioActive ? 'default' : 'outline'} className="text-xs" onClick={onNavStudio}>
-              Studio
-            </Button>
-          ) : null}
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <span
+            className={`inline-block size-2 rounded-full ${connected ? 'bg-emerald-500' : 'bg-amber-500'}`}
+            title={statusLabel}
+            aria-label={statusLabel}
+          />
           {onNavMe ? (
-            <Button type="button" size="sm" variant={navMeActive ? 'default' : 'outline'} className="text-xs" onClick={onNavMe}>
+            <Button type="button" size="sm" variant={navMeActive ? 'default' : 'ghost'} className="text-xs" onClick={onNavMe}>
               我
             </Button>
-          ) : null}
-          {capabilities ? (
-            <Badge className="border border-[var(--line)] bg-transparent text-[var(--muted)]" title="工作區角色">
-              {capabilities.role}
-            </Badge>
-          ) : null}
-          {onOpenTeam ? (
-            <Button type="button" size="sm" variant="ghost" className="text-xs" onClick={onOpenTeam}>
-              團隊
-            </Button>
-          ) : null}
-          {showSpaceContext && agents.length > 0 ? (
-            <label className="flex items-center gap-1 text-xs text-[var(--muted)]">
-              Agent
-              <select
-                className="rounded border border-[var(--line)] bg-[var(--card)] px-2 py-1 text-xs text-[var(--fg)]"
-                value={activeAgentId}
-                onChange={(e) => onAgentChange(e.target.value)}
-              >
-                {agents.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.name} ({a.kind})
-                  </option>
-                ))}
-              </select>
-            </label>
-          ) : null}
-          <Badge className={connected ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-amber-50 text-amber-800'}>
-            {badgeLabel}
-          </Badge>
-          {platform.showModelBadge && health?.openRouterConfigured ? (
-            <Badge className="hidden shrink-0 lg:inline-flex">
-              {health.model.split('/').pop()} → {health.providerOnly.join(', ')}
-              {lastProvider ? ` · ${lastProvider}` : ''}
-            </Badge>
           ) : null}
         </div>
       </header>

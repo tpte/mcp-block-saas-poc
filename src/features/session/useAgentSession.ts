@@ -69,17 +69,23 @@ export type AgentSessionOptions = {
   loadCanvas?: boolean
 }
 
+const PLAIN_SUGGESTIONS = ['看這個月的請假', '本週現金流', '改成深色']
+
+function plainSuggestions(list: string[], count: number) {
+  const clean = list
+    .map((text) => text.trim())
+    .filter((text) => text && !/skill|manifest|\bMCP\b|模組|read_skill|tool trace|命令盤/i.test(text))
+  const picked = (clean.length ? clean : PLAIN_SUGGESTIONS).slice(0, count)
+  return picked.length ? picked : PLAIN_SUGGESTIONS.slice(0, count)
+}
+
 export function useAgentSession(options: AgentSessionOptions = {}) {
   const { loadCanvas = false } = options
   const [health, setHealth] = useState<HealthInfo | null>(null)
   const [canvas, setCanvas] = useState<CanvasPage>(EMPTY_CANVAS)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [platform, setPlatform] = useState<PlatformConfig>(FALLBACK_PLATFORM)
-  const [suggestions, setSuggestions] = useState<string[]>([
-    '幫我看這個月的員工請假狀況',
-    '顯示本月財務現金流',
-    '改成深色模式',
-  ])
+  const [suggestions, setSuggestions] = useState<string[]>(PLAIN_SUGGESTIONS)
   const [busy, setBusy] = useState(false)
   const [trace, setTrace] = useState<string[]>([])
   const [traceLog, setTraceLog] = useState<ToolTraceEntry[]>([])
@@ -155,11 +161,11 @@ export function useAgentSession(options: AgentSessionOptions = {}) {
         canvasSummary: summarizeCanvas(canvas),
         agentId: clientSession.agentId,
       })
-      setSuggestions(next.slice(0, platform.suggestionCount))
+      setSuggestions(plainSuggestions(next, platform.suggestionCount))
     } catch {
       try {
         const platformData = await fetchPlatform()
-        setSuggestions(platformData.suggestions.slice(0, platform.suggestionCount))
+        setSuggestions(plainSuggestions(platformData.suggestions, platform.suggestionCount))
       } catch {
         /* keep previous pills */
       }

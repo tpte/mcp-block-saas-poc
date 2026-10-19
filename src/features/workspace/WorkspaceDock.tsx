@@ -11,27 +11,27 @@ export function WorkspaceDock({ workspaces, activeWorkspaceId, onSelect }: Props
   return (
     <nav
       className="flex shrink-0 gap-2 overflow-x-auto border-t border-[var(--line)] bg-[var(--card)]/80 px-3 py-2 backdrop-blur-md"
-      aria-label="SPACE 切換"
+      aria-label="工作區"
     >
+      <span className="hidden shrink-0 self-center pr-1 text-[10px] font-medium tracking-wide text-[var(--muted)] sm:inline">
+        工作區
+      </span>
       {workspaces.map((ws) => {
         const active = ws.id === activeWorkspaceId
         return (
           <button
             key={ws.id}
             type="button"
-            title={ws.name}
+            aria-current={active ? 'page' : undefined}
             onClick={() => onSelect(ws)}
             className={cn(
-              'flex min-w-[4.5rem] shrink-0 flex-col items-center rounded-xl px-3 py-1.5 text-center transition',
+              'shrink-0 rounded-full px-3 py-1.5 text-sm transition',
               active
-                ? 'bg-[var(--fg)] text-[var(--bg)] shadow-md'
-                : 'bg-[var(--bg)] text-[var(--muted)] hover:bg-[var(--line)]/40',
+                ? 'bg-[var(--fg)] font-medium text-[var(--bg)]'
+                : 'text-[var(--muted)] hover:bg-[var(--line)]/40 hover:text-[var(--fg)]',
             )}
           >
-            <span className="text-[10px] font-semibold uppercase tracking-wide">
-              {ws.slug.slice(0, 3)}
-            </span>
-            <span className="max-w-[5.5rem] truncate text-xs font-medium">{ws.name}</span>
+            {ws.name}
           </button>
         )
       })}

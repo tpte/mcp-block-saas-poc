@@ -129,15 +129,8 @@ export function predictPrompts(): string[] {
     builderFirst = []
   }
   const pools: Record<string, string[]> = {
-    builder: [
-      '我想做自己的後台，先講資料要存哪',
-      '請 read workspace-build skill 帶我開始',
-      '還原 HIYEN 型入門再微調',
-      '幫我 preview manifest 再套用',
-      '一鍵本機 SQLite 適合我嗎？',
-      '顯示本月財務現金流',
-    ],
-    home: ['幫我看這個月的員工請假狀況', '顯示本月財務現金流', '改成深色模式', '⌘K 開命令盤', 'block 排序改成 importance', '隱藏 tool trace'],
+    builder: ['先幫我接上公司資料', '看這個月的請假', '改成深色'],
+    home: ['看這個月的請假', '本週現金流', '改成深色'],
     hr: ['核准超過 3 天的請假', '顯示本月財務現金流', '改成深色模式', '關閉左側模組列', '把對話框加寬', '畫布改成全寬'],
     finance: ['列出待付發票', '給我看業務 pipeline 看板', '開啟頂部 pill', '畫布改成全寬', '改成深色模式', '關掉預測提示'],
     sales: ['本週有哪些待簽約？', '哪些 SKU 庫存偏低？', '標題改成北極星工作台', '關掉預測提示', '改成淺色模式', '對話框移到底部'],
