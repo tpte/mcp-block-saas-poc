@@ -79,7 +79,11 @@ app.post('/api/agent/chat', async (c) => {
     const turn = finalizeTurn(text, ui)
     return c.json({
       mode: 'fallback',
-      assistantMessage: err instanceof Error ? err.message : 'Agent 失敗，已改用離線路由。',
+      assistantMessage: turn.ui || turn.platformOnly
+        ? '模型暫時忙碌，已用本機 MCP 完成這一步。'
+        : err instanceof Error
+          ? err.message
+          : 'Agent 失敗，已改用離線路由。',
       ui: turn.ui,
       platform: turn.platform,
       suggestions: turn.suggestions,

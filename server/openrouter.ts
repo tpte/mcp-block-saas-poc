@@ -50,10 +50,11 @@ const toolDefs = [
   },
 ]
 
-export async function runOpenRouterAgent(messages: ChatMessage[]) {
-  const key = getOpenRouterKey()
-  if (!key) throw new Error('OPENROUTER_API_KEY missing')
+type ProviderPref =
+  | { only: string[]; allow_fallbacks: boolean }
+  | { order: string[]; allow_fallbacks: boolean }
 
+async function complete(key: string, messages: ChatMessage[], provider: ProviderPref) {
   const system: ChatMessage = {
     role: 'system',
     content: `你是 Super MCP 平台的 Orchestrator。畫布資料與平台外殼都透過 MCP 修改。
@@ -77,15 +78,12 @@ export async function runOpenRouterAgent(messages: ChatMessage[]) {
       tools: toolDefs,
       tool_choice: 'auto',
       temperature: 0.2,
-      provider: {
-        only: getProviderOnly(),
-        allow_fallbacks: allowProviderFallbacks(),
-      },
+      provider,
     }),
   })
 
   const data = (await res.json().catch(() => ({}))) as {
-    error?: { message?: string }
+    error?: { message?: string; code?: number }
     provider?: string
     choices?: Array<{
       message?: {
@@ -101,8 +99,40 @@ export async function runOpenRouterAgent(messages: ChatMessage[]) {
 
   if (!res.ok) {
     const msg = data.error?.message || res.statusText
-    throw new Error(`OpenRouter ${res.status}: ${msg}`)
+    const err = new Error(`OpenRouter ${res.status}: ${msg}`) as Error & { status?: number }
+    err.status = res.status
+    throw err
   }
+  return data
+}
+
+function retryable(err: unknown) {
+  const status = (err as { status?: number }).status
+  return status === 429 || status === 502 || status === 503 || status === 529
+}
+
+export async function runOpenRouterAgent(messages: ChatMessage[]) {
+  const key = getOpenRouterKey()
+  if (!key) throw new Error('OPENROUTER_API_KEY missing')
+
+  const pinned = getProviderOnly()
+  const attempts: ProviderPref[] = [
+    { only: pinned, allow_fallbacks: allowProviderFallbacks() },
+    { order: pinned, allow_fallbacks: true },
+  ]
+
+  let data: Awaited<ReturnType<typeof complete>> | null = null
+  let lastError: unknown
+  for (const provider of attempts) {
+    try {
+      data = await complete(key, messages, provider)
+      break
+    } catch (err) {
+      lastError = err
+      if (!retryable(err)) throw err
+    }
+  }
+  if (!data) throw lastError instanceof Error ? lastError : new Error('OpenRouter failed')
 
   const message = data.choices?.[0]?.message
   if (!message) throw new Error('OpenRouter empty response')
