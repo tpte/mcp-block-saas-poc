@@ -1,8 +1,10 @@
 import type { ReactNode } from 'react'
 import { Badge } from '../components/ui/badge'
+import { Button } from '../components/ui/button'
 import type { Agent, Workspace } from '../../shared/domain.ts'
 import { PRODUCT_NOT_HIYEN_LABEL } from '../../shared/product.ts'
-import type { HealthInfo, PlatformConfig } from '../mcp/client'
+import type { DevUser, HealthInfo, PlatformConfig, SessionCapabilities } from '../mcp/client'
+import { FlashBanner } from '../features/ui/FlashBanner'
 
 type Props = {
   health: HealthInfo | null
@@ -15,6 +17,15 @@ type Props = {
   workspaces?: Workspace[]
   activeWorkspaceId?: string
   onWorkspaceChange?: (workspaceId: string) => void
+  devUsers?: DevUser[]
+  activeUserId?: string
+  onUserChange?: (userId: string) => void
+  capabilities?: SessionCapabilities
+  onOpenTeam?: () => void
+  flash?: { text: string; variant: 'error' | 'ok' } | null
+  onDismissFlash?: () => void
+  onToggleMobileNav?: () => void
+  showMobileNavButton?: boolean
   children: ReactNode
 }
 
@@ -29,6 +40,15 @@ export function AppShell({
   workspaces = [],
   activeWorkspaceId,
   onWorkspaceChange,
+  devUsers = [],
+  activeUserId,
+  onUserChange,
+  capabilities,
+  onOpenTeam,
+  flash,
+  onDismissFlash,
+  onToggleMobileNav,
+  showMobileNavButton,
   children,
 }: Props) {
   const apiUp = !offline && Boolean(health?.ok)
@@ -56,6 +76,37 @@ export function AppShell({
           <p className="text-xs text-[var(--muted)]">{platform.subtitle}</p>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
+          {showMobileNavButton && onToggleMobileNav ? (
+            <Button type="button" size="sm" variant="outline" className="md:hidden" onClick={onToggleMobileNav}>
+              模組
+            </Button>
+          ) : null}
+          {devUsers.length > 1 && onUserChange ? (
+            <label className="flex items-center gap-1 text-xs text-[var(--muted)]" title="PoC 切換身份測 RBAC">
+              使用者
+              <select
+                className="max-w-[8rem] rounded border border-[var(--line)] bg-[var(--card)] px-2 py-1 text-xs text-[var(--fg)]"
+                value={activeUserId}
+                onChange={(e) => onUserChange(e.target.value)}
+              >
+                {devUsers.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.displayName}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+          {capabilities ? (
+            <Badge className="border border-[var(--line)] bg-transparent text-[var(--muted)]" title="工作區角色">
+              {capabilities.role}
+            </Badge>
+          ) : null}
+          {onOpenTeam ? (
+            <Button type="button" size="sm" variant="ghost" className="text-xs" onClick={onOpenTeam}>
+              團隊
+            </Button>
+          ) : null}
           {workspaces.length > 0 && onWorkspaceChange ? (
             <label className="flex items-center gap-1 text-xs text-[var(--muted)]">
               工作區
@@ -101,6 +152,16 @@ export function AppShell({
           ) : null}
         </div>
       </header>
+      {health?.persistence?.ephemeral ? (
+        <div className="border-b border-amber-300 bg-amber-50 px-4 py-2 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
+          {health.persistence.hint}
+        </div>
+      ) : null}
+      <FlashBanner
+        message={flash?.text ?? null}
+        variant={flash?.variant}
+        onDismiss={() => onDismissFlash?.()}
+      />
       {children}
     </div>
   )

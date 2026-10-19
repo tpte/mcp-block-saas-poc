@@ -286,6 +286,14 @@ export function findUserByEmail(email: string) {
   return load().users.find((u) => u.email.toLowerCase() === email.trim().toLowerCase()) ?? null
 }
 
+export function listUsers() {
+  return load().users
+}
+
+export function listPendingInvites(workspaceId: string) {
+  return load().workspaceInvites.filter((i) => i.workspaceId === workspaceId && !i.acceptedAt)
+}
+
 export function resolveSession(userId?: string, workspaceId?: string, agentId?: string): SessionContext {
   const db = load()
   const user = db.users.find((u) => u.id === userId) ?? db.users[0]

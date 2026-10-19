@@ -4,10 +4,11 @@ import { fetchOpsSummary } from '../../mcp/client'
 
 type Props = {
   refreshKey: number
+  defaultOpen?: boolean
 }
 
-export function OpsInsightsPanel({ refreshKey }: Props) {
-  const [open, setOpen] = useState(true)
+export function OpsInsightsPanel({ refreshKey, defaultOpen = true }: Props) {
+  const [open, setOpen] = useState(defaultOpen)
   const [summary, setSummary] = useState<OpLogSummary | null>(null)
   const [error, setError] = useState<string | null>(null)
 

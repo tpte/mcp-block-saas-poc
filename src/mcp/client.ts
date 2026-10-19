@@ -19,6 +19,31 @@ export type CatalogItem = {
   defaultPayload?: Record<string, unknown>
 }
 
+export type SessionCapabilities = {
+  role: string
+  canManageManifest: boolean
+  canInvite: boolean
+  canEditCanvas: boolean
+}
+
+export type DevUser = { id: string; displayName: string; email: string }
+
+export type SessionMember = {
+  userId: string
+  workspaceId: string
+  role: string
+  user?: { id: string; displayName: string; email: string }
+}
+
+export type WorkspaceInviteRow = {
+  id: string
+  workspaceId: string
+  email: string
+  role: string
+  token: string
+  createdAt: string
+}
+
 export type HealthInfo = {
   ok: boolean
   session?: {
@@ -33,6 +58,22 @@ export type HealthInfo = {
   model: string
   providerOnly: string[]
   allowFallbacks: boolean
+  persistence?: { ephemeral: boolean; hint: string }
+}
+
+async function parseApiError(res: Response): Promise<string> {
+  try {
+    const data = (await res.json()) as { error?: string }
+    if (data.error) return data.error
+  } catch {
+    /* ignore */
+  }
+  if (res.status === 403) return '權限不足'
+  return `${res.status} ${res.statusText}`
+}
+
+async function assertOk(res: Response) {
+  if (!res.ok) throw new Error(await parseApiError(res))
 }
 
 export type RunNode = {
@@ -62,9 +103,15 @@ export async function fetchHealth(): Promise<HealthInfo> {
   return res.json()
 }
 
-export async function fetchSession(): Promise<{ session: ClientSession & { userName?: string }; agents: Agent[] }> {
+export async function fetchSession(): Promise<{
+  session: ClientSession & { userName?: string }
+  agents: Agent[]
+  capabilities: SessionCapabilities
+  workspaceMembers: SessionMember[]
+  devUsers: DevUser[]
+}> {
   const res = await apiFetch('/api/session')
-  if (!res.ok) throw new Error('session failed')
+  await assertOk(res)
   const data = await res.json()
   return {
     session: {
@@ -74,6 +121,9 @@ export async function fetchSession(): Promise<{ session: ClientSession & { userN
       userName: data.session.user.displayName,
     },
     agents: data.agents,
+    capabilities: data.session.capabilities,
+    workspaceMembers: data.workspaceMembers ?? [],
+    devUsers: data.devUsers ?? [],
   }
 }
 
@@ -220,7 +270,7 @@ export async function saveManifest(manifest: WorkspaceManifest) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ manifest }),
   })
-  if (!res.ok) throw new Error('manifest save failed')
+  await assertOk(res)
   return res.json() as Promise<{ ok: boolean; revision: number; diff: { type: string; text: string }[] }>
 }
 
@@ -242,7 +292,7 @@ export async function saveWorkbenchFile(key: string, content: string) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ key, content }),
   })
-  if (!res.ok) throw new Error('workbench write failed')
+  await assertOk(res)
   return res.json()
 }
 
@@ -266,7 +316,7 @@ export async function saveCanvasApi(canvas: StoredCanvas, revision?: number) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ canvas, revision }),
   })
-  if (!res.ok) throw new Error('canvas save failed')
+  await assertOk(res)
   return res.json() as Promise<{ canvas: StoredCanvas }>
 }
 
@@ -276,7 +326,7 @@ export async function addCanvasBlock(templateId: string, props?: Record<string, 
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ templateId, props }),
   })
-  if (!res.ok) throw new Error('canvas add failed')
+  await assertOk(res)
   return res.json() as Promise<{ canvas: StoredCanvas; blockId: string }>
 }
 
@@ -286,22 +336,42 @@ export async function patchCanvasBlock(blockId: string, props: Record<string, un
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ props }),
   })
-  if (!res.ok) throw new Error('canvas patch failed')
+  await assertOk(res)
   return res.json() as Promise<{ canvas: StoredCanvas }>
 }
 
 export async function deleteCanvasBlock(blockId: string) {
   const res = await apiFetch(`/api/canvas/blocks/${blockId}`, { method: 'DELETE' })
-  if (!res.ok) throw new Error('canvas delete failed')
+  await assertOk(res)
   return res.json() as Promise<{ canvas: StoredCanvas }>
 }
 
-export async function createWorkspaceInvite(workspaceId: string, email: string, role: 'admin' | 'member' | 'viewer') {
+export async function fetchWorkspaceInvites(workspaceId: string) {
+  const res = await apiFetch(`/api/workspaces/${workspaceId}/invites`)
+  await assertOk(res)
+  return res.json() as Promise<{ invites: WorkspaceInviteRow[] }>
+}
+
+export async function createWorkspaceInvite(
+  workspaceId: string,
+  email: string,
+  role: 'admin' | 'member' | 'viewer',
+) {
   const res = await apiFetch(`/api/workspaces/${workspaceId}/invites`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, role }),
   })
-  if (!res.ok) throw new Error('invite failed')
-  return res.json()
+  await assertOk(res)
+  return res.json() as Promise<{ invite: WorkspaceInviteRow; token: string }>
+}
+
+export async function acceptWorkspaceInvite(token: string) {
+  const res = await apiFetch('/api/invites/accept', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token }),
+  })
+  await assertOk(res)
+  return res.json() as Promise<{ ok: boolean; workspaceId: string }>
 }

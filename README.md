@@ -57,7 +57,7 @@ Stop: `Ctrl+C` in the terminal running `dev:all`.
    - `OPENROUTER_API_KEY`
    - `OPENROUTER_SITE_URL` = `https://<你的 Railway 網域>`（未設時會嘗試 `RAILWAY_PUBLIC_DOMAIN`）
    - 可選：`OPENROUTER_MODEL`、`MCP_STDIO_SERVERS`（stdio 在 Railway 上需容器內可執行的 command）
-4. **持久化**（建議）：掛 Volume 到 `/app/.data`，否則重 deploy 會清空 workspace／platform JSON。
+4. **持久化**（建議）：掛 Volume 到 `/app/.data`，並設環境變數 `MATRIX_VOLUME_MOUNTED=true`（未設時 UI／health 會提示資料可能因 redeploy 遺失）。
 5. 產生 Public Networking → 健康檢查：`GET /api/health`。
 
 ### Push 自動部署（GitHub → Railway）

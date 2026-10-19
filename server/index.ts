@@ -22,7 +22,8 @@ import { runKeywordAgent } from './mcp/handlers.ts'
 import { getPlatform, predictPrompts } from './mcp/platform.ts'
 import { llmPredictSuggestions } from './suggestions/llmPrompts.ts'
 import { dispatchToolWithTrace, finalizeTurn } from './mcp/turn.ts'
-import { getRunTree, listAgents, listRecentRuns, resolveSession } from './db/store.ts'
+import { getRunTree, listAgents, listRecentRuns, listUsers, resolveSession } from './db/store.ts'
+import { listUsersInWorkspace, sessionCapabilities } from './workspaces/rbac.ts'
 import { runOpenRouterAgent, type ChatMessage } from './openrouter.ts'
 import { runWithSession } from './requestContext.ts'
 import { logAssistantReply, logFeedback, logToolInvoke, logUserMessage } from './ops/record.ts'
@@ -70,6 +71,10 @@ app.get('/api/health', (c) => {
     model: getOpenRouterModel(),
     providerOnly: getProviderOnly(),
     allowFallbacks: allowProviderFallbacks(),
+    persistence: {
+      ephemeral: Boolean(process.env.RAILWAY_ENVIRONMENT && process.env.MATRIX_VOLUME_MOUNTED !== 'true'),
+      hint: 'Railway 請掛 Volume 至 /app/.data，並設 MATRIX_VOLUME_MOUNTED=true',
+    },
   })
 })
 
@@ -80,8 +85,11 @@ app.get('/api/session', (c) => {
       user: session.user,
       workspace: session.workspace,
       activeAgentId: session.activeAgentId,
+      capabilities: sessionCapabilities(session),
     },
     agents: listAgents(session.workspace.id),
+    workspaceMembers: listUsersInWorkspace(session.workspace.id),
+    devUsers: listUsers().map((u) => ({ id: u.id, displayName: u.displayName, email: u.email })),
   })
 })
 

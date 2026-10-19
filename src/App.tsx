@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
+import { useMediaQuery } from './lib/useMediaQuery'
+import { WorkspaceTeamPanel } from './features/workspace/WorkspaceTeamPanel'
 import type { UiBlock } from './types/ui'
 import { BlockCanvas } from './features/canvas/BlockCanvas'
 import { ChatHistoryPanel } from './features/chat/ChatHistoryPanel'
@@ -20,14 +22,29 @@ import type { BlockAction } from './types/ui'
 
 export default function App() {
   const session = useAgentSession()
-  const { items: catalogItems, reload: reloadCatalog } = useModuleCatalog(session.clientSession.workspaceId)
-  const [mapOpen, setMapOpen] = useState(true)
+  const { items: catalogItems, loading: catalogLoading, reload: reloadCatalog } = useModuleCatalog(
+    session.clientSession.workspaceId,
+  )
+  const isNarrow = useMediaQuery('(max-width: 767px)')
+  const [mapOpen, setMapOpen] = useState(false)
   const [workbenchOpen, setWorkbenchOpen] = useState(false)
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
+  const [teamOpen, setTeamOpen] = useState(false)
   const composerRef = useRef<ComposerHandle>(null)
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [expandedBlock, setExpandedBlock] = useState<UiBlock | null>(null)
   const top = session.platform.composerPosition === 'top'
+  const canEditCanvas = session.capabilities.canEditCanvas
+  const canEditManifest = session.capabilities.canManageManifest
+  const bottomPanelsOpen = !isNarrow
+
+  useEffect(() => {
+    if (isNarrow) {
+      setMapOpen(false)
+      setWorkbenchOpen(false)
+    }
+  }, [isNarrow])
 
   function handleBlockAction(action: BlockAction) {
     void session.runMcpInvoke(action.mcpTool, action.payload)
@@ -69,13 +86,31 @@ export default function App() {
         session.selectWorkspace(id)
         reloadCatalog()
       }}
+      devUsers={session.devUsers}
+      activeUserId={session.clientSession.userId}
+      onUserChange={session.selectUser}
+      capabilities={session.capabilities}
+      onOpenTeam={() => setTeamOpen(true)}
+      flash={session.flash}
+      onDismissFlash={session.clearFlash}
+      showMobileNavButton={session.platform.moduleSidebarEnabled}
+      onToggleMobileNav={() => setMobileNavOpen((v) => !v)}
     >
       {session.platform.modulePillsEnabled ? (
         <ModulePillBar items={catalogItems} onSelect={session.runCatalogItem} />
       ) : null}
       <div className="flex min-h-0 flex-1 overflow-hidden">
         {session.platform.moduleSidebarEnabled ? (
-          <ModuleSidebar items={catalogItems} onSelect={session.runCatalogItem} />
+          <ModuleSidebar
+            items={catalogItems}
+            loading={catalogLoading}
+            mobileOpen={mobileNavOpen}
+            onMobileClose={() => setMobileNavOpen(false)}
+            onSelect={(item) => {
+              setMobileNavOpen(false)
+              session.runCatalogItem(item)
+            }}
+          />
         ) : null}
         {session.platform.showHistory ? (
           <ChatHistoryPanel
@@ -110,16 +145,18 @@ export default function App() {
               onFocusBlock={session.setFocusedBlockId}
               expandedBlock={expandedBlock}
               onExpandBlock={setExpandedBlock}
-              onAddTemplate={(id) => void session.addBlockFromTemplate(id)}
-              onSaveBlockProps={(blockId, props) => void session.updateBlockProps(blockId, props)}
-              onDeleteBlock={(id) => void session.removeBlock(id)}
+              onAddTemplate={canEditCanvas ? (id) => void session.addBlockFromTemplate(id) : undefined}
+              onSaveBlockProps={
+                canEditCanvas ? (blockId, props) => void session.updateBlockProps(blockId, props) : undefined
+              }
+              onDeleteBlock={canEditCanvas ? (id) => void session.removeBlock(id) : undefined}
             />
           </main>
           <WorkspaceMapPanel open={mapOpen} onToggle={() => setMapOpen((v) => !v)} refreshKey={session.opsRefreshKey} />
           <WorkbenchPanel
             open={workbenchOpen}
             onToggle={() => setWorkbenchOpen((v) => !v)}
-            canEdit
+            canEdit={canEditManifest}
             onSaved={() => {
               void session.refreshBackend()
               reloadCatalog()
@@ -127,8 +164,8 @@ export default function App() {
           />
           {session.platform.showToolTrace ? (
             <>
-              <OpsInsightsPanel refreshKey={session.opsRefreshKey} />
-              <ToolTracePanel entries={session.traceLog} />
+              <OpsInsightsPanel refreshKey={session.opsRefreshKey} defaultOpen={bottomPanelsOpen} />
+              <ToolTracePanel entries={session.traceLog} defaultOpen={bottomPanelsOpen} />
             </>
           ) : null}
           <AgentTopologyPanel runId={session.lastRunId} />
@@ -149,6 +186,15 @@ export default function App() {
         onSelect={session.runCatalogItem}
       />
       <ShortcutsHelpModal open={shortcutsOpen} platform={session.platform} onClose={() => setShortcutsOpen(false)} />
+      <WorkspaceTeamPanel
+        open={teamOpen}
+        onClose={() => setTeamOpen(false)}
+        workspaceId={session.clientSession.workspaceId}
+        canInvite={session.capabilities.canInvite}
+        members={session.workspaceMembers}
+        onAccepted={() => void session.refreshBackend()}
+        onFlash={session.showFlash}
+      />
     </AppShell>
   )
 }

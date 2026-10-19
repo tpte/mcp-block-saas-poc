@@ -3,7 +3,13 @@ import { randomUUID } from 'node:crypto'
 import { BLOCK_TEMPLATES } from '../../shared/blockTemplates.ts'
 import { loadCanvas, saveCanvas } from '../canvas/store.ts'
 import { validateBlockProps } from '../canvas/validate.ts'
-import { acceptInvite, createInvite, createWorkspace, listWorkspacesForUser } from '../db/store.ts'
+import {
+  acceptInvite,
+  createInvite,
+  createWorkspace,
+  listPendingInvites,
+  listWorkspacesForUser,
+} from '../db/store.ts'
 import { sessionFromHeaders } from '../context.ts'
 import { logCanvasOp, logManifestEdit } from '../ops/record.ts'
 import type { WorkspaceManifest } from '../../shared/workspaceManifest.ts'
@@ -50,6 +56,18 @@ export function registerWorkspaceRoutes(app: Hono) {
     requireMinRole(session, 'member')
     if (session.workspace.id !== c.req.param('id')) requireMinRole(session, 'admin')
     return c.json({ members: listUsersInWorkspace(c.req.param('id')) })
+  })
+
+  app.get('/api/workspaces/:id/invites', (c) => {
+    const session = sessionFromHeaders(c)
+    try {
+      if (!canInvite(session)) throw new RbacError('無法查看邀請')
+      const workspaceId = c.req.param('id')
+      if (session.workspace.id !== workspaceId) requireMinRole(session, 'admin')
+      return c.json({ invites: listPendingInvites(workspaceId) })
+    } catch (err) {
+      return rbacJson(c, err)
+    }
   })
 
   app.post('/api/workspaces/:id/invites', async (c) => {

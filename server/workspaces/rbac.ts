@@ -34,6 +34,20 @@ export function canInvite(session: SessionContext) {
   return RANK[roleOf(session)] >= RANK.admin
 }
 
+export function canEditCanvas(session: SessionContext) {
+  return RANK[roleOf(session)] >= RANK.member
+}
+
+export function sessionCapabilities(session: SessionContext) {
+  const role = roleOf(session)
+  return {
+    role,
+    canManageManifest: canManageManifest(session),
+    canInvite: canInvite(session),
+    canEditCanvas: canEditCanvas(session),
+  }
+}
+
 export function assertWorkspaceMember(userId: string, workspaceId: string) {
   const role = getMemberRole(workspaceId, userId)
   if (!role) throw new RbacError('非此工作區成員')

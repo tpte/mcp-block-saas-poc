@@ -3,10 +3,11 @@ import type { ToolTraceEntry } from '../../../shared/trace.ts'
 
 type Props = {
   entries: ToolTraceEntry[]
+  defaultOpen?: boolean
 }
 
-export function ToolTracePanel({ entries }: Props) {
-  const [open, setOpen] = useState(true)
+export function ToolTracePanel({ entries, defaultOpen = true }: Props) {
+  const [open, setOpen] = useState(defaultOpen)
   const [expanded, setExpanded] = useState<number | null>(null)
 
   if (entries.length === 0) return null

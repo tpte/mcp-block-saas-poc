@@ -18,8 +18,11 @@ import {
   sendAgentChat,
   submitOpFeedback,
   type CatalogItem,
+  type DevUser,
   type HealthInfo,
   type PlatformConfig,
+  type SessionCapabilities,
+  type SessionMember,
 } from '../../mcp/client'
 import { loadClientSession, saveClientSession } from '../../session/apiHeaders.ts'
 import type { CanvasPage } from '../../types/ui'
@@ -78,6 +81,15 @@ export function useAgentSession() {
   const [clientSession, setClientSession] = useState(loadClientSession)
   const [workspaces, setWorkspaces] = useState<Workspace[]>([])
   const [canvasMergeMode, setCanvasMergeMode] = useState<'merge' | 'replace'>('merge')
+  const [capabilities, setCapabilities] = useState<SessionCapabilities>({
+    role: 'member',
+    canManageManifest: true,
+    canInvite: false,
+    canEditCanvas: true,
+  })
+  const [workspaceMembers, setWorkspaceMembers] = useState<SessionMember[]>([])
+  const [devUsers, setDevUsers] = useState<DevUser[]>([])
+  const [flash, setFlash] = useState<{ text: string; variant: 'error' | 'ok' } | null>(null)
   const busyRef = useRef(false)
   const canvasRevisionRef = useRef(1)
   const mergeModeRef = useRef<'merge' | 'replace'>('merge')
@@ -149,6 +161,9 @@ export function useAgentSession() {
       setHealth(healthData)
       setPlatform(platformData.platform)
       setAgents(sessionData.agents)
+      setCapabilities(sessionData.capabilities)
+      setWorkspaceMembers(sessionData.workspaceMembers)
+      setDevUsers(sessionData.devUsers)
       setWorkspaces(wsData.workspaces)
       if (canvasData) {
         setCanvas(canvasData.canvas)
@@ -296,27 +311,64 @@ export function useAgentSession() {
     [refreshBackend],
   )
 
-  const updateBlockProps = useCallback(async (blockId: string, props: Record<string, unknown>) => {
-    const { canvas: saved } = await patchCanvasBlock(blockId, props)
-    canvasRevisionRef.current = saved.revision
-    setCanvas(saved)
-    setOpsRefreshKey((k) => k + 1)
+  const selectUser = useCallback(
+    (userId: string) => {
+      const next = { ...loadClientSession(), userId }
+      saveClientSession(next)
+      setClientSession(next)
+      void refreshBackend()
+    },
+    [refreshBackend],
+  )
+
+  const showFlash = useCallback((text: string, variant: 'error' | 'ok' = 'error') => {
+    setFlash({ text, variant })
   }, [])
 
-  const addBlockFromTemplate = useCallback(async (templateId: string) => {
-    const { canvas: saved, blockId } = await addCanvasBlock(templateId)
-    canvasRevisionRef.current = saved.revision
-    setCanvas(saved)
-    setFocusedBlockId(blockId)
-    setOpsRefreshKey((k) => k + 1)
-  }, [])
+  const clearFlash = useCallback(() => setFlash(null), [])
 
-  const removeBlock = useCallback(async (blockId: string) => {
-    const { canvas: saved } = await deleteCanvasBlock(blockId)
-    canvasRevisionRef.current = saved.revision
-    setCanvas(saved)
-    setOpsRefreshKey((k) => k + 1)
-  }, [])
+  const updateBlockProps = useCallback(
+    async (blockId: string, props: Record<string, unknown>) => {
+      try {
+        const { canvas: saved } = await patchCanvasBlock(blockId, props)
+        canvasRevisionRef.current = saved.revision
+        setCanvas(saved)
+        setOpsRefreshKey((k) => k + 1)
+      } catch (err) {
+        showFlash(err instanceof Error ? err.message : '無法更新 Block')
+      }
+    },
+    [showFlash],
+  )
+
+  const addBlockFromTemplate = useCallback(
+    async (templateId: string) => {
+      try {
+        const { canvas: saved, blockId } = await addCanvasBlock(templateId)
+        canvasRevisionRef.current = saved.revision
+        setCanvas(saved)
+        setFocusedBlockId(blockId)
+        setOpsRefreshKey((k) => k + 1)
+      } catch (err) {
+        showFlash(err instanceof Error ? err.message : '無法新增 Block')
+      }
+    },
+    [showFlash],
+  )
+
+  const removeBlock = useCallback(
+    async (blockId: string) => {
+      try {
+        const { canvas: saved } = await deleteCanvasBlock(blockId)
+        canvasRevisionRef.current = saved.revision
+        setCanvas(saved)
+        setOpsRefreshKey((k) => k + 1)
+      } catch (err) {
+        showFlash(err instanceof Error ? err.message : '無法刪除 Block')
+      }
+    },
+    [showFlash],
+  )
 
   const focusAdjacentBlock = useCallback(
     (direction: 1 | -1) => {
@@ -359,5 +411,12 @@ export function useAgentSession() {
     updateBlockProps,
     addBlockFromTemplate,
     removeBlock,
+    capabilities,
+    workspaceMembers,
+    devUsers,
+    selectUser,
+    flash,
+    showFlash,
+    clearFlash,
   }
 }
