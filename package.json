@@ -11,6 +11,7 @@
     "start": "NODE_ENV=production SERVE_STATIC=true tsx server/index.ts",
     "lint": "oxlint",
     "verify:builder": "node scripts/verify-builder.mjs",
+    "verify:chat": "node scripts/verify-chat-lanes.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

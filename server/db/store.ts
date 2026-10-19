@@ -187,6 +187,31 @@ function seed(): DbShape {
 
 let cache: DbShape | null = null
 
+/** 舊 DB 可能缺某些工作區的 Agent；從 seed 補齊 personal copilot。 */
+function ensureWorkspaceAgents(db: DbShape) {
+  const fresh = seed()
+  let changed = false
+  for (const ws of db.workspaces) {
+    if (db.agents.some((a) => a.workspaceId === ws.id)) continue
+    const fromSeed = fresh.agents.filter((a) => a.workspaceId === ws.id)
+    if (fromSeed.length) {
+      db.agents.push(...fromSeed)
+      changed = true
+      continue
+    }
+    const tpl = fresh.agents.find((a) => a.kind === 'personal')
+    if (!tpl) continue
+    db.agents.push({
+      ...tpl,
+      id: `agent-${ws.id}-copilot`,
+      workspaceId: ws.id,
+      name: `${ws.name} Copilot`,
+    })
+    changed = true
+  }
+  return changed
+}
+
 function load(): DbShape {
   if (cache) return cache
   if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true })
@@ -206,11 +231,6 @@ function load(): DbShape {
     cache.workspaceMembers.push(...fresh.workspaceMembers.filter((m) => m.workspaceId === hiyen.id))
     persist()
   }
-  if (!cache.agents.some((a) => a.workspaceId === 'ws-sample')) {
-    const fresh = seed()
-    cache.agents.push(...fresh.agents.filter((a) => a.workspaceId === 'ws-sample'))
-    persist()
-  }
   if (!Array.isArray(cache.agents) || cache.agents.length === 0) {
     const fresh = seed()
     cache.users = fresh.users
@@ -221,6 +241,7 @@ function load(): DbShape {
     cache.platformByWorkspace = { ...fresh.platformByWorkspace, ...cache.platformByWorkspace }
     persist()
   }
+  if (ensureWorkspaceAgents(cache)) persist()
   let agentPolicyMigrated = false
   for (const agent of cache.agents) {
     if (
