@@ -68,7 +68,7 @@ export function BuilderHubPanel({
 
   if (!open) {
     return (
-      <section className="relative z-[45] shrink-0 border-t border-[var(--line)] bg-[var(--bg)] px-4 py-2">
+      <section className="shrink-0 border-t border-[var(--line)] bg-[var(--bg)] px-4 py-2">
         <button type="button" className="text-xs font-medium text-[var(--muted)]" onClick={onToggle}>
           ▸ 打造後台（Skills 引導 · 模板還原）
         </button>
@@ -77,7 +77,7 @@ export function BuilderHubPanel({
   }
 
   return (
-    <section className="relative z-[45] shrink-0 border-t border-[var(--line)] bg-[var(--bg)] px-4 py-3">
+    <section className="max-h-[min(42vh,420px)] shrink-0 overflow-y-auto border-t border-[var(--line)] bg-[var(--bg)] px-4 py-3">
       <div className="mb-2 flex items-center justify-between">
         <p className="text-xs font-semibold text-[var(--muted)]">打造後台 · Agent + Skills</p>
         <button type="button" className="text-xs text-[var(--muted)]" onClick={onToggle}>

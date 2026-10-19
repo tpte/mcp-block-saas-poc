@@ -40,11 +40,11 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
   return (
     <div
       className={cn(
-        'pointer-events-none absolute inset-x-0 z-40 px-4',
-        top ? 'top-14 bg-gradient-to-b from-[var(--bg)] via-[var(--bg)]/95 to-transparent pb-8 pt-2' : 'bottom-0 bg-gradient-to-t from-[var(--bg)] via-[var(--bg)]/95 to-transparent pb-5 pt-10',
+        'relative z-30 shrink-0 border-t border-[var(--line)] bg-[var(--bg)] px-4',
+        top ? 'order-first border-b border-t-0 pb-8 pt-2' : 'pb-5 pt-3',
       )}
     >
-      <div className={cn('pointer-events-auto mx-auto w-full', platform.composerWidth === 'wide' ? 'max-w-4xl' : 'max-w-[720px]')}>
+      <div className={cn('mx-auto w-full', platform.composerWidth === 'wide' ? 'max-w-4xl' : 'max-w-[720px]')}>
         {platform.suggestionsEnabled && suggestions.length > 0 ? (
           <div className="mb-2 flex flex-wrap gap-2">
             {suggestions.map((text, index) => (

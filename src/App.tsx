@@ -32,7 +32,7 @@ export default function App() {
   const [workbenchOpen, setWorkbenchOpen] = useState(false)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [teamOpen, setTeamOpen] = useState(false)
-  const [builderOpen, setBuilderOpen] = useState(!isNarrow)
+  const [builderOpen, setBuilderOpen] = useState(false)
   const composerRef = useRef<ComposerHandle>(null)
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
@@ -137,10 +137,10 @@ export default function App() {
             onRateReply={(logId, rating) => void session.rateAssistantReply(logId, rating)}
           />
         ) : null}
-        <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+        <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <main
             className={
-              top ? 'min-h-0 flex-1 overflow-y-auto px-6 pb-8 pt-44' : 'min-h-0 flex-1 overflow-y-auto px-6 pb-48 pt-2'
+              top ? 'min-h-0 flex-1 overflow-y-auto px-6 pb-8 pt-44' : 'min-h-0 flex-1 overflow-y-auto px-6 pb-4 pt-2'
             }
           >
             {session.trace.length > 0 ? (
@@ -170,34 +170,36 @@ export default function App() {
               onDeleteBlock={canEditCanvas ? (id) => void session.removeBlock(id) : undefined}
             />
           </main>
-          <BuilderHubPanel
-            open={builderOpen}
-            onToggle={() => setBuilderOpen((v) => !v)}
-            canManageManifest={canEditManifest}
-            onAskAgent={(prompt) => void session.sendMessage(prompt)}
-            onApplied={() => {
-              void session.refreshBackend()
-              reloadCatalog()
-            }}
-            onFlash={session.showFlash}
-          />
-          <WorkspaceMapPanel open={mapOpen} onToggle={() => setMapOpen((v) => !v)} refreshKey={session.opsRefreshKey} />
-          <WorkbenchPanel
-            open={workbenchOpen}
-            onToggle={() => setWorkbenchOpen((v) => !v)}
-            canEdit={canEditManifest}
-            onSaved={() => {
-              void session.refreshBackend()
-              reloadCatalog()
-            }}
-          />
-          {session.platform.showToolTrace ? (
-            <>
-              <OpsInsightsPanel refreshKey={session.opsRefreshKey} defaultOpen={bottomPanelsOpen} />
-              <ToolTracePanel entries={session.traceLog} defaultOpen={bottomPanelsOpen} />
-            </>
-          ) : null}
-          <AgentTopologyPanel runId={session.lastRunId} />
+          <div className="flex min-h-0 shrink-0 flex-col overflow-y-auto overscroll-contain">
+            <BuilderHubPanel
+              open={builderOpen}
+              onToggle={() => setBuilderOpen((v) => !v)}
+              canManageManifest={canEditManifest}
+              onAskAgent={(prompt) => void session.sendMessage(prompt)}
+              onApplied={() => {
+                void session.refreshBackend()
+                reloadCatalog()
+              }}
+              onFlash={session.showFlash}
+            />
+            <WorkspaceMapPanel open={mapOpen} onToggle={() => setMapOpen((v) => !v)} refreshKey={session.opsRefreshKey} />
+            <WorkbenchPanel
+              open={workbenchOpen}
+              onToggle={() => setWorkbenchOpen((v) => !v)}
+              canEdit={canEditManifest}
+              onSaved={() => {
+                void session.refreshBackend()
+                reloadCatalog()
+              }}
+            />
+            {session.platform.showToolTrace ? (
+              <>
+                <OpsInsightsPanel refreshKey={session.opsRefreshKey} defaultOpen={bottomPanelsOpen} />
+                <ToolTracePanel entries={session.traceLog} defaultOpen={bottomPanelsOpen} />
+              </>
+            ) : null}
+            <AgentTopologyPanel runId={session.lastRunId} />
+          </div>
           <Composer
             ref={composerRef}
             messages={session.messages}
