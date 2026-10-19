@@ -19,4 +19,4 @@ Production: https://matrix-mcp-production.up.railway.app
 - HIYEN（`spaceProfile: admin`）：單欄 Block 堆疊。
 - 若套用 **dev-ide** 模板：IDE 雙欄（manifest + Block 預覽）。
 
-API：`npm run verify:builder`
+API：`npm run verify:all`；瀏覽器：`BASE_URL=… npm run verify:full`

@@ -128,6 +128,15 @@ for (const { ws, agent } of workspaceChecks) {
     } else {
       console.log('OK', 'modules-catalog', ws, `modules=${modulesJson.modules.length}`)
     }
+    const manifestRes = await fetch(`${base}/api/manifest`, { headers: headers(ws, agent) })
+    const manifestJson = await manifestRes.json().catch(() => ({}))
+    const profile = manifestJson.manifest?.ui?.spaceProfile ?? 'default'
+    if (!manifestRes.ok || !manifestJson.manifest) {
+      console.error('FAIL', 'manifest-get', ws)
+      failed += 1
+    } else {
+      console.log('OK', 'manifest-get', ws, `spaceProfile=${profile}`)
+    }
     const canvasRes = await fetch(`${base}/api/canvas`, { headers: headers(ws, agent) })
     const canvasJson = await canvasRes.json().catch(() => ({}))
     const blockCount = canvasJson.canvas?.blocks?.length ?? 0

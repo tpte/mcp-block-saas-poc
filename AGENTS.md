@@ -21,4 +21,4 @@
 
 - 本機：`npm run dev:all`
 - 生產：https://matrix-mcp-production.up.railway.app
-- 驗收：`npm run verify:all`（chat + builder + SPA 路由）；可设 `BASE_URL` 打 production
+- 驗收：`npm run verify:all`（chat + builder + SPA）；`verify:full` 含 Playwright 煙測；`BASE_URL` 可打 production
