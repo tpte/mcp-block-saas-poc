@@ -366,6 +366,14 @@ export async function createWorkspaceInvite(
   return res.json() as Promise<{ invite: WorkspaceInviteRow; token: string }>
 }
 
+export type BuilderDataSourceSummary = {
+  id: string
+  label: string
+  type: string
+  secretRef: string
+  health?: string
+}
+
 export type BuilderSetupContext = {
   displayName: string
   enabledModuleCount: number
@@ -374,6 +382,7 @@ export type BuilderSetupContext = {
   suggestedSkillIds: string[]
   availableCatalogIds: string[]
   enabledCatalogIds: string[]
+  dataSources: BuilderDataSourceSummary[]
 }
 
 export type BuilderTemplateMeta = { id: string; label: string; description: string }
@@ -386,6 +395,31 @@ export async function fetchBuilderSetupContext(): Promise<{ context: BuilderSetu
 
 export async function fetchBuilderTemplates(): Promise<{ templates: BuilderTemplateMeta[] }> {
   const res = await apiFetch('/api/builder/templates')
+  await assertOk(res)
+  return res.json()
+}
+
+export async function addBuilderDataSource(input: {
+  label: string
+  type: string
+  id?: string
+  secretRef?: string
+}) {
+  const res = await apiFetch('/api/builder/data-sources', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  })
+  await assertOk(res)
+  return res.json()
+}
+
+export async function saveBuilderModules(enabledCatalogIds: string[]) {
+  const res = await apiFetch('/api/builder/modules', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ enabledCatalogIds }),
+  })
   await assertOk(res)
   return res.json()
 }

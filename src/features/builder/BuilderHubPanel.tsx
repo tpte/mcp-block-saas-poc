@@ -7,6 +7,8 @@ import {
   type BuilderSetupContext,
   type BuilderTemplateMeta,
 } from '../../mcp/client'
+import { DataSourcePlanForm } from './DataSourcePlanForm'
+import { ModuleQuickPick } from './ModuleQuickPick'
 
 type Props = {
   open: boolean
@@ -35,9 +37,13 @@ export function BuilderHubPanel({
   const [templates, setTemplates] = useState<BuilderTemplateMeta[]>([])
   const [busy, setBusy] = useState(false)
 
+  function reloadContext() {
+    void fetchBuilderSetupContext().then((d) => setCtx(d.context))
+  }
+
   useEffect(() => {
     if (!open) return
-    void fetchBuilderSetupContext().then((d) => setCtx(d.context))
+    reloadContext()
     void fetchBuilderTemplates().then((d) => setTemplates(d.templates))
   }, [open])
 
@@ -51,7 +57,7 @@ export function BuilderHubPanel({
       await applyBuilderTemplate(templateId, true)
       onFlash('已還原模板，可繼續跟 Agent 微調', 'ok')
       onApplied()
-      void fetchBuilderSetupContext().then((d) => setCtx(d.context))
+      reloadContext()
     } catch (err) {
       onFlash(err instanceof Error ? err.message : '還原失敗')
     } finally {
@@ -97,6 +103,29 @@ export function BuilderHubPanel({
           )}
         </div>
       ) : null}
+      <div className="mb-3 space-y-2">
+        <DataSourcePlanForm
+          canManage={canManageManifest}
+          existing={ctx?.dataSources ?? []}
+          onSaved={() => {
+            reloadContext()
+            onApplied()
+          }}
+          onFlash={onFlash}
+          onAskAgent={onAskAgent}
+        />
+        <ModuleQuickPick
+          canManage={canManageManifest}
+          availableIds={ctx?.availableCatalogIds ?? []}
+          enabledIds={ctx?.enabledCatalogIds ?? []}
+          onSaved={() => {
+            reloadContext()
+            onApplied()
+          }}
+          onFlash={onFlash}
+          onAskAgent={onAskAgent}
+        />
+      </div>
       <div className="mb-3 flex flex-wrap gap-2">
         {STARTER_PROMPTS.map((p) => (
           <Button key={p} type="button" size="sm" variant="outline" className="h-auto whitespace-normal text-left text-[11px]" onClick={() => onAskAgent(p)}>

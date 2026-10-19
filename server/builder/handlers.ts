@@ -3,7 +3,8 @@ import { getSession } from '../requestContext.ts'
 import { canManageManifest } from '../workspaces/rbac.ts'
 import { loadManifest, saveManifest } from '../workspaces/manifest.ts'
 import { logManifestEdit } from '../ops/record.ts'
-import type { DataSourceRecord, WorkspaceManifest } from '../../shared/workspaceManifest.ts'
+import type { WorkspaceManifest } from '../../shared/workspaceManifest.ts'
+import { appendManifestDataSource, setEnabledModules, validateDataSourceInput } from './manifestOps.ts'
 import {
   WORKSPACE_TEMPLATES,
   type WorkspaceTemplateId,
@@ -154,22 +155,29 @@ export function builderApplyTemplate(payload?: Record<string, unknown>) {
 
 export function builderUpdateManifest(payload?: Record<string, unknown>) {
   const session = requireManifestAdmin()
-  const manifest = loadManifest(session.workspace.id, session.workspace.name)
+  let manifest = loadManifest(session.workspace.id, session.workspace.name)
   const enabledCatalogIds = payload?.enabledCatalogIds as string[] | undefined
-  const appendDataSource = payload?.appendDataSource as DataSourceRecord | undefined
+  const appendDataSource = payload?.appendDataSource as Record<string, unknown> | undefined
   const displayName = payload?.displayName as string | undefined
 
   if (enabledCatalogIds?.length) {
-    manifest.modules.enabledCatalogIds = [...new Set(enabledCatalogIds)]
+    manifest = setEnabledModules(session, enabledCatalogIds)
   }
-  if (appendDataSource?.id) {
-    const exists = manifest.dataSources.some((d) => d.id === appendDataSource.id)
-    if (!exists) manifest.dataSources.push(appendDataSource)
+  if (appendDataSource?.label) {
+    const record = validateDataSourceInput({
+      id: String(appendDataSource.id ?? ''),
+      label: String(appendDataSource.label),
+      type: String(appendDataSource.type ?? 'postgres'),
+      secretRef: appendDataSource.secretRef ? String(appendDataSource.secretRef) : undefined,
+    })
+    manifest = appendManifestDataSource(session, record)
   }
-  if (displayName?.trim()) manifest.displayName = displayName.trim().slice(0, 80)
+  if (displayName?.trim()) {
+    manifest.displayName = displayName.trim().slice(0, 80)
+    saveManifest(session.workspace.id, manifest)
+    logManifestEdit(session, manifest.revision)
+  }
 
-  saveManifest(session.workspace.id, manifest)
-  logManifestEdit(session, manifest.revision)
   const ctx = analyzeSetupContext(manifest)
   return speechToBlocks(
     `已更新 manifest。模組 ${ctx.enabledModuleCount} 個，資料源 ${ctx.dataSourceCount} 個。${ctx.gaps.length ? `提醒：${ctx.gaps[0]}` : ''}`,

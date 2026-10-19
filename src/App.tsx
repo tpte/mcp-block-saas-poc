@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useMediaQuery } from './lib/useMediaQuery'
 import { WorkspaceTeamPanel } from './features/workspace/WorkspaceTeamPanel'
 import { BuilderHubPanel } from './features/builder/BuilderHubPanel'
+import { fetchBuilderSetupContext } from './mcp/client'
 import type { UiBlock } from './types/ui'
 import { BlockCanvas } from './features/canvas/BlockCanvas'
 import { ChatHistoryPanel } from './features/chat/ChatHistoryPanel'
@@ -48,6 +49,20 @@ export default function App() {
       setBuilderOpen(false)
     }
   }, [isNarrow])
+
+  useEffect(() => {
+    if (session.offline) return
+    const ws = session.clientSession.workspaceId
+    const key = `matrix-builder-onboard-${ws}`
+    if (localStorage.getItem(key) === 'done') return
+    void fetchBuilderSetupContext().then(({ context }) => {
+      if (context.dataSourceCount === 0 || context.gaps.length > 0) {
+        setBuilderOpen(true)
+        session.showFlash('歡迎打造後台：可先規劃資料源，或點起步問題跟 Agent 對話', 'ok')
+      }
+      localStorage.setItem(key, 'done')
+    })
+  }, [session.clientSession.workspaceId, session.offline, session.showFlash])
 
   function handleBlockAction(action: BlockAction) {
     void session.runMcpInvoke(action.mcpTool, action.payload)

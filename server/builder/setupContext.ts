@@ -1,6 +1,6 @@
 import { MCP_TOOL_NAMES } from '../mcp/handlers.ts'
 import { buildMcpCatalog } from '../mcp/catalog.ts'
-import type { WorkspaceManifest } from '../../shared/workspaceManifest.ts'
+import type { DataSourceRecord, WorkspaceManifest } from '../../shared/workspaceManifest.ts'
 import { listBuilderSkills } from './registry.ts'
 
 export type SetupContext = {
@@ -11,6 +11,7 @@ export type SetupContext = {
   suggestedSkillIds: string[]
   availableCatalogIds: string[]
   enabledCatalogIds: string[]
+  dataSources: Pick<DataSourceRecord, 'id' | 'label' | 'type' | 'secretRef' | 'health'>[]
 }
 
 export function analyzeSetupContext(manifest: WorkspaceManifest): SetupContext {
@@ -42,6 +43,13 @@ export function analyzeSetupContext(manifest: WorkspaceManifest): SetupContext {
     suggestedSkillIds: [...new Set(suggestedSkillIds)],
     availableCatalogIds: availableCatalogIds.length ? availableCatalogIds : [...allTools],
     enabledCatalogIds: enabled,
+    dataSources: manifest.dataSources.map((d) => ({
+      id: d.id,
+      label: d.label,
+      type: d.type,
+      secretRef: d.secretRef,
+      health: d.health,
+    })),
   }
 }
 
