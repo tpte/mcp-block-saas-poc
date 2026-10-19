@@ -49,7 +49,7 @@ export function WorkbenchPanel({ open, onToggle, canEdit, onSaved }: Props) {
 
   if (!open) {
     return (
-      <section className="border-t border-[var(--line)] px-4 py-2">
+      <section className="relative z-[45] shrink-0 border-t border-[var(--line)] bg-[var(--bg)] px-4 py-2">
         <button type="button" className="text-xs font-medium text-[var(--muted)]" onClick={onToggle}>
           ▸ 工作台（manifest / DIFF / Git）
         </button>
@@ -58,7 +58,7 @@ export function WorkbenchPanel({ open, onToggle, canEdit, onSaved }: Props) {
   }
 
   return (
-    <section className="border-t border-[var(--line)] bg-[var(--card)]/30 px-4 py-2">
+    <section className="relative z-[45] shrink-0 border-t border-[var(--line)] bg-[var(--bg)] px-4 py-2">
       <div className="mb-2 flex items-center justify-between">
         <p className="text-xs font-semibold text-[var(--muted)]">工作台 · manifest.json</p>
         <button type="button" className="text-xs text-[var(--muted)]" onClick={onToggle}>

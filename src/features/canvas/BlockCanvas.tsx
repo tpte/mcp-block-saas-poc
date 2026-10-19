@@ -64,7 +64,7 @@ export function BlockCanvas({
         <p className="mt-2 max-w-md text-sm text-[var(--muted)]">
           {platform.subtitle}。說你想看什麼，或用 ⌘K／左側模組直達 MCP。
         </p>
-        {platform.suggestionsEnabled ? (
+        {platform.suggestionsEnabled && platform.composerPosition !== 'bottom' ? (
           <div className="mt-6 flex flex-wrap justify-center gap-2">
             {suggestions.map((text, index) => (
               <button

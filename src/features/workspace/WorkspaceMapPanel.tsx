@@ -55,7 +55,7 @@ export function WorkspaceMapPanel({ open, onToggle, refreshKey }: Props) {
   if (!graph) return null
 
   return (
-    <section className="border-t border-[var(--line)] bg-[var(--card)]/25 px-4 py-2">
+    <section className="relative z-[45] shrink-0 border-t border-[var(--line)] bg-[var(--bg)] px-4 py-2">
       <button
         type="button"
         className="flex w-full items-center justify-between text-left text-xs font-medium text-[var(--muted)]"
