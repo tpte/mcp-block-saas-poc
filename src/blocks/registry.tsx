@@ -33,5 +33,3 @@ export function renderBlock(block: UiBlock, onAction?: (action: BlockAction) => 
   }
   return <Component key={block.blockId} {...block.props} onAction={onAction} />
 }
-
-export { flattenUi } from '../types/ui'

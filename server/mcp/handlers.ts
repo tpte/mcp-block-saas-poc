@@ -76,7 +76,7 @@ export function invokeMcpTool(tool: string, _payload?: Record<string, unknown>):
       return {
         action: 'RENDER',
         ui: {
-          layout: 'stack',
+          layout: 'grid',
           blocks: [
             {
               type: 'block',
@@ -131,7 +131,7 @@ export function invokeMcpTool(tool: string, _payload?: Record<string, unknown>):
       return {
         action: 'RENDER',
         ui: {
-          layout: 'stack',
+          layout: 'hero',
           blocks: [
             {
               type: 'block',
@@ -296,7 +296,7 @@ export function invokeMcpTool(tool: string, _payload?: Record<string, unknown>):
       return {
         action: 'RENDER',
         ui: {
-          layout: 'stack',
+          layout: 'grid',
           blocks: [
             {
               type: 'block',

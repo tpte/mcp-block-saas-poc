@@ -1,6 +1,8 @@
 export type {
   BlockAction,
   BlockProps,
+  CanvasLayout,
+  CanvasPage,
   ChartPoint,
   KanbanColumn,
   MetricItem,
@@ -14,9 +16,4 @@ export type {
   UpdatePayload,
 } from '../../shared/ui.ts'
 
-export { BLOCK_COMPONENTS } from '../../shared/ui.ts'
-
-export function flattenUi(ui: import('../../shared/ui.ts').UiBlock | { layout: 'stack'; blocks: import('../../shared/ui.ts').UiBlock[] }) {
-  if ('layout' in ui) return ui.blocks
-  return [ui]
-}
+export { BLOCK_COMPONENTS, toCanvas } from '../../shared/ui.ts'

@@ -1,6 +1,8 @@
-# MCP Block SaaS MVP
+# Super MCP
 
-Agent-driven SaaS demo: **6 MCP modules**, **9 Block types**, and **OpenRouter** (`deepseek/deepseek-v4.1-flash-1017` pinned to **Together**).
+整頁智能畫布 + 底部對話。任何已掛載的 MCP 回傳 Block schema，前端就整頁重排。HR / 財務 / 業務只是示範 connector。
+
+OpenRouter：`deepseek/deepseek-v4.1-flash-1017`，釘 **Together**。
 
 ## Stack
 

@@ -66,9 +66,21 @@ export type UiBlock = {
   props: BlockProps
 }
 
+export type CanvasLayout = 'stack' | 'grid' | 'hero'
+
+export type CanvasPage = {
+  layout: CanvasLayout
+  blocks: UiBlock[]
+}
+
 export type RenderPayload = {
   action: 'RENDER'
-  ui: UiBlock | { layout: 'stack'; blocks: UiBlock[] }
+  ui: UiBlock | CanvasPage
+}
+
+export function toCanvas(ui: UiBlock | CanvasPage): CanvasPage {
+  if ('blocks' in ui && 'layout' in ui) return ui
+  return { layout: 'hero', blocks: [ui] }
 }
 
 export type UpdatePayload = {

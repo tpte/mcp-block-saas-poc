@@ -28,9 +28,10 @@ export async function runOpenRouterAgent(messages: ChatMessage[]) {
 
   const system: ChatMessage = {
     role: 'system',
-    content: `你是北極星科技的 Orchestrator Agent。使用者用繁體中文提問時，請選擇最合適的 MCP tool 取得資料並更新 UI。
+    content: `你是 Super MCP 平台的 Orchestrator。平台不綁定特定公司產品，任何已掛載的 MCP 都能驅動整頁畫布。
+使用者用繁體中文描述想看的內容時，選擇最合適的 tool，前端會整頁重繪（圖表、表格、看板依 tool 回傳的 layout）。
 可用 tools：${MCP_TOOL_NAMES.join(', ')}。
-規則：一次只呼叫一個 tool；不要捏造 HTML；回覆使用者時用簡短繁中說明你做了什麼。`,
+規則：一次只呼叫一個 tool；不要輸出 HTML；回覆用一句繁中說明畫布更新了什麼。`,
   }
 
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {

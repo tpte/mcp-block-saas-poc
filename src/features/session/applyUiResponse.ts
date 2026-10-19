@@ -1,12 +1,16 @@
-import type { McpUiResponse, UiBlock } from '../../types/ui'
-import { flattenUi } from '../../types/ui'
+import { toCanvas, type CanvasPage, type McpUiResponse } from '../../types/ui'
 
-export function applyUiResponse(blocks: UiBlock[], response: McpUiResponse | null): UiBlock[] {
-  if (!response) return blocks
-  if (response.action === 'RENDER') return flattenUi(response.ui)
-  return blocks.map((block) =>
-    block.blockId === response.targetBlockId
-      ? { ...block, props: { ...block.props, ...response.patch } }
-      : block,
-  )
+export const EMPTY_CANVAS: CanvasPage = { layout: 'stack', blocks: [] }
+
+export function applyUiResponse(state: CanvasPage, response: McpUiResponse | null): CanvasPage {
+  if (!response) return state
+  if (response.action === 'RENDER') return toCanvas(response.ui)
+  return {
+    ...state,
+    blocks: state.blocks.map((block) =>
+      block.blockId === response.targetBlockId
+        ? { ...block, props: { ...block.props, ...response.patch } }
+        : block,
+    ),
+  }
 }
