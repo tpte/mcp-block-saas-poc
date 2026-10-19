@@ -285,7 +285,8 @@ export function useAgentSession(options: AgentSessionOptions = {}) {
         setLastProvider(result.provider)
         if (result.ui) {
           setCanvas((prev) => {
-            const next = applyUi(prev, result.ui)
+            const base = result.replaceCanvas ? { ...EMPTY_CANVAS } : prev
+            const next = applyUi(base, result.ui)
             void persistCanvas(next)
             return loadCanvas ? next : prev
           })

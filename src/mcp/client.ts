@@ -206,6 +206,7 @@ export type AgentChatResult = {
   mode: string
   assistantMessage: string
   ui: McpUiResponse | null
+  replaceCanvas?: boolean
   trace?: ToolTraceEntry[]
   runId?: string
   replyLogId?: string

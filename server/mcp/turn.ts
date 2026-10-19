@@ -1,7 +1,7 @@
 import type { McpUiResponse } from '../../shared/ui.ts'
 import type { ToolTraceEntry } from '../../shared/trace.ts'
 import { runAgentDelegate } from '../agents/delegate.ts'
-import { assertToolAllowed, PolicyError } from '../agents/policy.ts'
+import { assertToolAllowed } from '../agents/policy.ts'
 import { callMountedMcp, listMountedMcps } from './bridge.ts'
 import { composeCanvas, speechToBlocks } from './compose.ts'
 import { invokeMcpTool } from './handlers.ts'
@@ -54,10 +54,7 @@ export async function dispatchToolWithTrace(
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : 'dispatch failed'
-    const ui =
-      err instanceof PolicyError
-        ? speechToBlocks(message)
-        : null
+    const ui = null
     return {
       ui,
       trace: [

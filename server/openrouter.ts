@@ -245,12 +245,15 @@ function systemFor(lane: TurnLane, systemExtra: string, evidence?: string) {
 不要做報表，不要呼叫工作區資料工具。
 ${evidence ? `\n參考資料：\n${evidence}` : ''}`
   }
+  if (lane === 'build') {
+    return `${systemExtra}
+使用者要打造這個工作區。只用 builder 工具，不要呼叫請假、財務、庫存等資料工具，也不要自己編一份報表。
+繁中，不要用 markdown。`
+  }
   return `${systemExtra}
-你是 MATRIX 工作區助手（與 HIYEN MATRIX 無關）。只有使用者明確要看資料、改畫面或打造後台時，才呼叫一個最相關的工具，並用 ${COMPOSE_TOOL} 把結果畫上畫布。
-不要為了寒暄一次呼叫多個報表。blocks.kind 只能是 title、points、chart、confirm、diff、document、plan。
-需要事實再呼叫 web:search；時間用 util:now；計算用 util:calc。
-工作區資料工具：${MCP_TOOL_NAMES.join(', ')}。改外殼用 ${PLATFORM_TOOL}。外部 MCP 用 ${BRIDGE_LIST} / ${BRIDGE_CALL}。
-繁中。不要輸出 HTML。`
+使用者要看一份工作區資料。只呼叫一個對應的資料工具，再用 ${COMPOSE_TOOL} 畫上畫面。
+不要提 Skill、資料源或打造後台，不要一次呼叫多個報表。
+繁中，不要用 markdown。`
 }
 
 async function complete(
@@ -322,10 +325,17 @@ export async function runOpenRouterAgent(messages: ChatMessage[], agentId?: stri
   const agent = getAgent(activeId)
   const lastUser = [...messages].reverse().find((m) => m.role === 'user')?.content ?? ''
   const lane = classifyTurn(lastUser)
+  const allowed = filterToolsForAgent(toolDefs, activeId)
   const tools =
-    lane === 'workspace' ? filterToolsForAgent(toolDefs, activeId) : null
+    lane === 'chat' || lane === 'lookup'
+      ? null
+      : lane === 'build'
+        ? allowed.filter(
+            (tool) => tool.function.name.startsWith('builder:') || tool.function.name === COMPOSE_TOOL,
+          )
+        : allowed.filter((tool) => !tool.function.name.startsWith('builder:'))
   let systemExtra = agent ? `${agent.systemPrompt}\nAgent: ${agent.name} (${agent.kind}).\n` : ''
-  if (lane === 'workspace') {
+  if (lane === 'build') {
     try {
       systemExtra += `\n${builderSystemPromptAddon()}\n`
     } catch {
@@ -356,7 +366,7 @@ export async function runOpenRouterAgent(messages: ChatMessage[], agentId?: stri
   const message = data.choices?.[0]?.message
   if (!message) throw new Error('OpenRouter empty response')
 
-  if (lane !== 'workspace') {
+  if (lane === 'chat' || lane === 'lookup') {
     const text = message.content?.trim() || evidence || '我在，再說一次你想問的。'
     return {
       assistantMessage: text,

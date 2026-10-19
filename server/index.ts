@@ -21,7 +21,8 @@ import { explainCapability } from './mcp/bridge.ts'
 import { mountStdioFromEnv } from './mcp/external/stdioMcp.ts'
 import { runKeywordAgent } from './mcp/handlers.ts'
 import { getPlatform, predictPrompts } from './mcp/platform.ts'
-import { chatFallback, classifyTurn, localAnswer } from './agent/lane.ts'
+import { chatFallback, dataReply, isConversational, localAnswer } from './agent/lane.ts'
+import { runDirectData } from './agent/dataTurn.ts'
 import { llmPredictSuggestions } from './suggestions/llmPrompts.ts'
 import { dispatchToolWithTrace, finalizeTurn } from './mcp/turn.ts'
 import { getRunTree, listAgents, listRecentRuns, listUsers, resolveSession } from './db/store.ts'
@@ -287,6 +288,48 @@ app.post('/api/agent/chat', async (c) => {
         return
       }
 
+      const direct = await runDirectData(text)
+      if (direct) {
+        await status('正在讀取這份資料')
+        const reply = dataReply(direct.tool)
+        const trace = [
+          {
+            tool: direct.tool,
+            source: 'chat' as const,
+            mode: 'offline' as const,
+            durationMs: Math.round(performance.now() - started),
+            ok: true,
+          },
+        ]
+        const nodes = persistTrace(trace, { runId, parentNodeId: null })
+        const replyLogId = logAssistantReply(chatSession, {
+          parentId: userLogId,
+          userText: text,
+          runId,
+          mode: 'offline',
+          assistantMessage: reply,
+          trace,
+          provider: null,
+          durationMs: Math.round(performance.now() - started),
+        })
+        await finish({
+          mode: 'offline',
+          assistantMessage: reply,
+          ui: direct.ui,
+          replaceCanvas: true,
+          trace,
+          runId,
+          runNodes: nodes,
+          platform: getPlatform(),
+          suggestions: predictPrompts(),
+          provider: null,
+          model: null,
+          agentId: direct.agentId,
+          replyLogId,
+        })
+        return
+      }
+
       const explained = explainCapability(text)
       if (explained) {
         await status('這題在問已掛載的 MCP，直接讀工具清單')
@@ -330,7 +373,7 @@ app.post('/api/agent/chat', async (c) => {
       try {
         if (!getOpenRouterKey()) {
           clearInterval(timer)
-          if (classifyTurn(text) !== 'workspace') {
+          if (isConversational(text)) {
             const reply = chatFallback(text)
             const replyLogId = logAssistantReply(chatSession, {
               parentId: userLogId,
@@ -431,7 +474,7 @@ app.post('/api/agent/chat', async (c) => {
         })
       } catch (err) {
         clearInterval(timer)
-        if (classifyTurn(text) !== 'workspace') {
+        if (isConversational(text)) {
           const reply = chatFallback(text)
           const replyLogId = logAssistantReply(chatSession, {
             parentId: userLogId,

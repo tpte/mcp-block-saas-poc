@@ -1,15 +1,41 @@
-export type TurnLane = 'chat' | 'lookup' | 'workspace'
+export type TurnLane = 'chat' | 'lookup' | 'data' | 'build'
 
-const WORKSPACE =
-  /請假|員工|人資|現金|發票|財務|庫存|進銷|客服|工單|報表|kpi|看板|銷售|業務|pipeline|資料源|後台|模組|畫布|manifest|模板|打造|啟用/i
-
+const BUILD = /資料源|後台|模組|畫布|manifest|模板|打造|啟用|客製|skill/i
 const LOOKUP = /搜尋|搜一下|查一下|上網|網路上|最新|新聞|天氣|股價|匯率|是誰|是什麼|什麼是|查詢/
 
 export function classifyTurn(text: string): TurnLane {
   const t = text.trim()
-  if (WORKSPACE.test(t)) return 'workspace'
+  if (dataToolFor(t) && !BUILD.test(t)) return 'data'
+  if (BUILD.test(t)) return 'build'
   if (LOOKUP.test(t)) return 'lookup'
   return 'chat'
+}
+
+export function isConversational(text: string) {
+  const lane = classifyTurn(text)
+  return lane === 'chat' || lane === 'lookup'
+}
+
+/** 問得夠具體就直接對應一個資料工具，不讓模型自己亂呼叫。 */
+export function dataToolFor(text: string): string | null {
+  if (/發票/.test(text)) return 'finance:list_invoices'
+  if (/現金|財務|cashflow/i.test(text)) return 'finance:get_cashflow'
+  if (/業務|pipeline|銷售|漏斗/i.test(text)) return 'sales:pipeline'
+  if (/庫存|進銷|inventory/i.test(text)) return 'inventory:stock_alerts'
+  if (/客服|工單|support/i.test(text)) return 'support:open_tickets'
+  if (/報表|kpi|渠道|analytics/i.test(text)) return 'analytics:kpi_week'
+  if (/請假|員工|人資|\bhr\b/i.test(text)) return 'hr:get_leave'
+  return null
+}
+
+export function dataReply(tool: string) {
+  if (tool.startsWith('hr:')) return '這是這個月的請假。'
+  if (tool.startsWith('finance:')) return '這是財務資料。'
+  if (tool.startsWith('sales:')) return '這是業務資料。'
+  if (tool.startsWith('inventory:')) return '這是庫存資料。'
+  if (tool.startsWith('support:')) return '這是客服資料。'
+  if (tool.startsWith('analytics:')) return '這是報表。'
+  return '這是你要的資料。'
 }
 
 /** 不需模型的短答。回 null 表示仍要走對話模型。 */
