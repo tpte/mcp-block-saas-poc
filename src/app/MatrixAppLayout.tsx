@@ -8,14 +8,12 @@ import { useModuleCatalog } from '../features/module/useModuleCatalog'
 import { AgentSessionProvider, useAgentSessionContext } from '../features/session/AgentSessionContext'
 import { WorkspaceDock } from '../features/workspace/WorkspaceDock'
 import { MePage } from '../pages/MePage'
-import { SpacePage } from '../pages/SpacePage'
-import { StudioPage } from '../pages/StudioPage'
 import {
   HomeOrLastSpace,
   RedirectGlobalStudio,
   RedirectModuleRoute,
 } from './RedirectLegacyRoutes'
-import { WorkspaceSlugSync } from './WorkspaceSlugSync'
+import { WorkspaceShell } from './WorkspaceShell'
 import type { ComposerHandle } from '../features/chat/Composer'
 
 function MatrixAppInner() {
@@ -63,27 +61,11 @@ function MatrixAppInner() {
       showSpaceContext={Boolean(slug) && !isStudio}
     >
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <div key={location.pathname} className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <Routes>
             <Route path="/" element={<HomeOrLastSpace />} />
-            <Route
-              path="/w/:slug/studio"
-              element={
-                <>
-                  <WorkspaceSlugSync />
-                  <StudioPage />
-                </>
-              }
-            />
-            <Route
-              path="/w/:slug"
-              element={
-                <>
-                  <WorkspaceSlugSync />
-                  <SpacePage />
-                </>
-              }
-            />
+            <Route path="/w/:slug/studio" element={<WorkspaceShell />} />
+            <Route path="/w/:slug" element={<WorkspaceShell />} />
             <Route path="/me" element={<MePage />} />
             <Route path="/m/:moduleId" element={<RedirectModuleRoute />} />
             <Route path="/studio" element={<RedirectGlobalStudio />} />

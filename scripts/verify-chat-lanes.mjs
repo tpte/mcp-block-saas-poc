@@ -57,6 +57,21 @@ const cases = [
       (p.trace || []).some((t) => t.tool === 'finance:get_cashflow') &&
       p.ui,
   },
+  {
+    name: 'personal-search',
+    ws: 'ws-personal',
+    agent: 'agent-personal',
+    text: '搜尋 玉山 高度',
+    assert: (p) => {
+      const tools = (p.trace || []).map((t) => t.tool).join(',')
+      return (
+        (p.mode === 'openrouter' || p.mode === 'offline') &&
+        !/hr:|finance:|builder:/.test(tools) &&
+        String(p.assistantMessage || '').length > 4 &&
+        !p.ui
+      )
+    },
+  },
 ]
 
 const workspaceChecks = [
@@ -85,6 +100,15 @@ for (const { ws, agent } of workspaceChecks) {
       failed += 1
     } else {
       console.log('OK', 'suggestions-clean', ws)
+    }
+    const canvasRes = await fetch(`${base}/api/canvas`, { headers: headers(ws, agent) })
+    const canvasJson = await canvasRes.json().catch(() => ({}))
+    const blockCount = canvasJson.canvas?.blocks?.length ?? 0
+    if (!canvasRes.ok) {
+      console.error('FAIL', 'canvas-get', ws, canvasRes.status)
+      failed += 1
+    } else {
+      console.log('OK', 'canvas-get', ws, `blocks=${blockCount}`)
     }
   } catch (err) {
     console.error('FAIL', 'workspace-meta', ws, err.message)
