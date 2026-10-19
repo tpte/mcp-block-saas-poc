@@ -424,8 +424,10 @@ const serveUi =
   process.env.NODE_ENV === 'production' || process.env.SERVE_STATIC === 'true'
 if (serveUi && existsSync(distDir)) {
   app.use('/assets/*', serveStatic({ root: './dist' }))
-  app.use('/*', serveStatic({ root: './dist' }))
-  app.get('*', serveStatic({ path: './dist/index.html' }))
+  app.get('*', (c, next) => {
+    if (c.req.path.startsWith('/api/')) return next()
+    return serveStatic({ path: './dist/index.html' })(c, next)
+  })
 }
 
 const port = Number(process.env.PORT || 8787)
