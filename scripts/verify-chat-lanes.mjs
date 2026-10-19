@@ -5,15 +5,16 @@
  */
 const base = (process.env.BASE_URL ?? 'http://127.0.0.1:8787').replace(/\/$/, '')
 
+const headers = (ws, agent) => ({
+  'X-User-Id': 'user-alan',
+  'X-Workspace-Id': ws,
+  'X-Agent-Id': agent,
+})
+
 async function chat(ws, agent, text) {
   const res = await fetch(`${base}/api/agent/chat`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-User-Id': 'user-alan',
-      'X-Workspace-Id': ws,
-      'X-Agent-Id': agent,
-    },
+    headers: { 'Content-Type': 'application/json', ...headers(ws, agent) },
     body: JSON.stringify({ messages: [{ role: 'user', content: text }] }),
   })
   const raw = await res.text()
@@ -46,9 +47,50 @@ const cases = [
     assert: (p) =>
       p.mode === 'offline' && (p.trace || []).some((t) => t.tool === 'hr:get_leave') && p.ui,
   },
+  {
+    name: 'hiyen-cashflow',
+    ws: 'ws-hiyen',
+    agent: 'agent-hiyen-personal',
+    text: '本週現金流',
+    assert: (p) =>
+      p.mode === 'offline' &&
+      (p.trace || []).some((t) => t.tool === 'finance:get_cashflow') &&
+      p.ui,
+  },
+]
+
+const workspaceChecks = [
+  { ws: 'ws-personal', agent: 'agent-personal' },
+  { ws: 'ws-sample', agent: 'agent-personal' },
+  { ws: 'ws-hiyen', agent: 'agent-hiyen-personal' },
 ]
 
 let failed = 0
+for (const { ws, agent } of workspaceChecks) {
+  try {
+    const res = await fetch(`${base}/api/session`, { headers: headers(ws, agent) })
+    const data = await res.json()
+    if (!res.ok || !data.agents?.length) {
+      console.error('FAIL', 'session-agents', ws, data.agents?.length ?? 0)
+      failed += 1
+    } else {
+      console.log('OK', 'session-agents', ws)
+    }
+    const plat = await fetch(`${base}/api/platform`, { headers: headers(ws, agent) }).then((r) =>
+      r.json(),
+    )
+    const bad = (plat.suggestions ?? []).some((s) => /接上.*公司|還缺什麼|skill/i.test(s))
+    if (bad) {
+      console.error('FAIL', 'suggestions-clean', ws, plat.suggestions)
+      failed += 1
+    } else {
+      console.log('OK', 'suggestions-clean', ws)
+    }
+  } catch (err) {
+    console.error('FAIL', 'workspace-meta', ws, err.message)
+    failed += 1
+  }
+}
 for (const c of cases) {
   try {
     const p = await chat(c.ws, c.agent, c.text)
