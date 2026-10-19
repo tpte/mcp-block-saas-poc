@@ -12,6 +12,7 @@
     "lint": "oxlint",
     "verify:builder": "node scripts/verify-builder.mjs",
     "verify:chat": "node scripts/verify-chat-lanes.mjs",
+    "verify:all": "npm run verify:chat && npm run verify:builder",
     "preview": "vite preview"
   },
   "dependencies": {

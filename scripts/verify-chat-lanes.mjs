@@ -101,6 +101,14 @@ for (const { ws, agent } of workspaceChecks) {
     } else {
       console.log('OK', 'suggestions-clean', ws)
     }
+    const modulesRes = await fetch(`${base}/api/modules`, { headers: headers(ws, agent) })
+    const modulesJson = await modulesRes.json().catch(() => ({}))
+    if (!modulesRes.ok || !Array.isArray(modulesJson.modules) || modulesJson.modules.length === 0) {
+      console.error('FAIL', 'modules-catalog', ws)
+      failed += 1
+    } else {
+      console.log('OK', 'modules-catalog', ws, `modules=${modulesJson.modules.length}`)
+    }
     const canvasRes = await fetch(`${base}/api/canvas`, { headers: headers(ws, agent) })
     const canvasJson = await canvasRes.json().catch(() => ({}))
     const blockCount = canvasJson.canvas?.blocks?.length ?? 0

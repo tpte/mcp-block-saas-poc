@@ -21,4 +21,4 @@
 
 - 本機：`npm run dev:all`
 - 生產：https://matrix-mcp-production.up.railway.app
-- 驗收：`npm run verify:chat`（寒暄／資料分軌）、`npm run verify:builder`（Studio）；可设 `BASE_URL` 打 production
+- 驗收：`npm run verify:all`（chat + builder）；可设 `BASE_URL` 打 production

@@ -31,6 +31,7 @@ export function SpacePage() {
   const canvasBlock = (
     <BlockCanvas
       canvas={session.canvas}
+      canvasLoading={!session.canvasHydrated}
       platform={session.platform}
       suggestions={session.suggestions}
       onAction={handleBlockAction}

@@ -111,6 +111,7 @@ export function useAgentSession(options: AgentSessionOptions = {}) {
   const [workspaceMembers, setWorkspaceMembers] = useState<SessionMember[]>([])
   const [devUsers, setDevUsers] = useState<DevUser[]>([])
   const [flash, setFlash] = useState<{ text: string; variant: 'error' | 'ok' } | null>(null)
+  const [canvasHydrated, setCanvasHydrated] = useState(!loadCanvas)
   const busyRef = useRef(false)
   const canvasRevisionRef = useRef(1)
   const mergeModeRef = useRef<'merge' | 'replace'>('merge')
@@ -212,9 +213,11 @@ export function useAgentSession(options: AgentSessionOptions = {}) {
       setClientSession(sessionData.session)
       saveClientSession(sessionData.session)
       setOffline(false)
+      if (loadCanvas) setCanvasHydrated(true)
       return true
     } catch {
       setOffline(true)
+      if (loadCanvas) setCanvasHydrated(true)
       return false
     }
   }, [loadCanvas])
@@ -224,7 +227,11 @@ export function useAgentSession(options: AgentSessionOptions = {}) {
   }, [refreshBackend])
 
   useEffect(() => {
-    if (!loadCanvas) return
+    if (!loadCanvas) {
+      setCanvasHydrated(true)
+      return
+    }
+    setCanvasHydrated(false)
     void refreshBackend()
   }, [loadCanvas, refreshBackend])
 
@@ -360,6 +367,7 @@ export function useAgentSession(options: AgentSessionOptions = {}) {
           if (loadCanvas) {
             setCanvas(EMPTY_CANVAS)
             canvasRevisionRef.current = 1
+            setCanvasHydrated(false)
           }
         }
         const restored = restoreWorkspaceUi(workspaceId)
@@ -456,6 +464,7 @@ export function useAgentSession(options: AgentSessionOptions = {}) {
   return {
     health,
     canvas,
+    canvasHydrated,
     messages,
     platform,
     suggestions,

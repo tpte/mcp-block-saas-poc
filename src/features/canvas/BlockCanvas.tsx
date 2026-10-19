@@ -9,6 +9,7 @@ import { sortBlocks } from './sortBlocks'
 
 type Props = {
   canvas: CanvasPage
+  canvasLoading?: boolean
   platform: PlatformConfig
   suggestions: string[]
   busy?: boolean
@@ -31,6 +32,7 @@ const widthClass = {
 
 export function BlockCanvas({
   canvas,
+  canvasLoading = false,
   platform,
   suggestions,
   busy = false,
@@ -60,14 +62,20 @@ export function BlockCanvas({
   if (canvas.blocks.length === 0) {
     return (
       <div className="flex min-h-[min(52vh,420px)] flex-col items-center justify-center px-4 py-8 text-center md:px-6">
-        <p className="text-2xl font-semibold tracking-tight">這個工作區還沒有畫面</p>
-        <p className="mt-2 max-w-md text-sm text-[var(--muted)]">
-          在下方告訴 Agent 你想看什麼，它會把結果畫在這裡。
+        <p className="text-2xl font-semibold tracking-tight">
+          {canvasLoading ? '載入畫布…' : '這個工作區還沒有畫面'}
         </p>
-        {platform.suggestionsEnabled && platform.composerPosition === 'bottom' ? (
+        {canvasLoading ? (
+          <p className="mt-2 text-sm text-[var(--muted)]">從工作區讀取已儲存的版面。</p>
+        ) : (
+          <p className="mt-2 max-w-md text-sm text-[var(--muted)]">
+            在下方告訴 Agent 你想看什麼，它會把結果畫在這裡。
+          </p>
+        )}
+        {!canvasLoading && platform.suggestionsEnabled && platform.composerPosition === 'bottom' ? (
           <p className="mt-4 text-xs text-[var(--muted)]">點下方建議，或直接輸入。</p>
         ) : null}
-        {platform.suggestionsEnabled && platform.composerPosition !== 'bottom' ? (
+        {!canvasLoading && platform.suggestionsEnabled && platform.composerPosition !== 'bottom' ? (
           <div className="mt-6 flex flex-wrap justify-center gap-2">
             {suggestions.map((text, index) => (
               <button
