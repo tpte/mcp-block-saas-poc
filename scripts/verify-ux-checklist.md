@@ -5,7 +5,8 @@ Production: https://matrix-mcp-production.up.railway.app
 ## 路由
 
 1. **MATRIX `/`**：Hero（副標 + tagline）+ 底部 **SPACE Dock**。
-2. **SPACE `/w/:slug`**：模組 pill／側欄、快捷操作、調整工作區（Studio）+ Block + Composer。
+2. **SPACE `/w/:slug`**：常用捷徑（如現金流／請假）、模組 pill／側欄、快捷操作、打造後台、Studio + Block + Composer。
+3. **Studio `?focus=builder`**：桌面分頁（打造後台／地圖／工作台）可切換。
 3. **Studio `/w/:slug/studio`**：builder／manifest／資料源。
 4. **`/me`**：個人設定、身份、工作區連結。
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { useMediaQuery } from '../lib/useMediaQuery'
 import { BuilderHubPanel } from '../features/builder/BuilderHubPanel'
 import { fetchBuilderSetupContext } from '../mcp/client'
@@ -10,19 +10,31 @@ import { useAgentSessionContext } from '../features/session/AgentSessionContext'
 import { WorkbenchPanel } from '../features/workspace/WorkbenchPanel'
 import { WorkspaceMapPanel } from '../features/workspace/WorkspaceMapPanel'
 import { WorkspaceToolsDock, type WorkspaceToolTab } from '../features/workspace/WorkspaceToolsDock'
+import { StudioSectionTabs, type StudioSection } from '../features/workspace/StudioSectionTabs'
 import { useModuleCatalog } from '../features/module/useModuleCatalog'
+
+function parseStudioFocus(raw: string | null): StudioSection | null {
+  if (raw === 'builder' || raw === 'map' || raw === 'workbench') return raw
+  return null
+}
 
 export function StudioPage() {
   const { slug = 'personal' } = useParams()
+  const [searchParams] = useSearchParams()
   const session = useAgentSessionContext()
   const isNarrow = useMediaQuery('(max-width: 767px)')
-  const [builderOpen, setBuilderOpen] = useState(true)
-  const [mapOpen, setMapOpen] = useState(false)
-  const [workbenchOpen, setWorkbenchOpen] = useState(false)
+  const [section, setSection] = useState<StudioSection>('builder')
   const [mobileToolTab, setMobileToolTab] = useState<WorkspaceToolTab>('builder')
   const [debugOpen, setDebugOpen] = useState(false)
   const { reload: reloadCatalog } = useModuleCatalog(session.clientSession.workspaceId)
   const canEditManifest = session.capabilities.canManageManifest
+
+  useEffect(() => {
+    const focus = parseStudioFocus(searchParams.get('focus'))
+    if (!focus) return
+    setSection(focus)
+    setMobileToolTab(focus)
+  }, [searchParams])
 
   useEffect(() => {
     const ws = session.clientSession.workspaceId
@@ -38,9 +50,9 @@ export function StudioPage() {
 
   const builderPanel = (
     <BuilderHubPanel
-      open={isNarrow ? mobileToolTab === 'builder' : builderOpen}
+      open={isNarrow ? mobileToolTab === 'builder' : section === 'builder'}
       embedded={isNarrow}
-      onToggle={() => (isNarrow ? setMobileToolTab(null) : setBuilderOpen((v) => !v))}
+      onToggle={() => (isNarrow ? setMobileToolTab(null) : setSection('builder'))}
       canManageManifest={canEditManifest}
       onAskAgent={(prompt) => void session.sendMessage(prompt)}
       onApplied={() => {
@@ -61,7 +73,7 @@ export function StudioPage() {
       <div className="flex shrink-0 items-center justify-between border-b border-[var(--line)] px-4 py-2">
         <div>
           <p className="text-sm font-semibold">Studio</p>
-          <p className="text-xs text-[var(--muted)]">調整這個工作區的資料與版面</p>
+          <p className="text-xs text-[var(--muted)]">打造後台、地圖、manifest 工作台</p>
         </div>
         <div className="flex items-center gap-3">
           <button
@@ -72,10 +84,11 @@ export function StudioPage() {
             {debugOpen ? '隱藏除錯' : '除錯'}
           </button>
           <Link to={`/w/${slug}`} className="text-xs text-cyan-700 hover:underline dark:text-cyan-400">
-            ← 回到工作區
+            ← 回到 SPACE
           </Link>
         </div>
       </div>
+      {!isNarrow ? <StudioSectionTabs active={section} onChange={setSection} /> : null}
       <div className="min-h-0 flex-1 overflow-y-auto">
         {isNarrow ? (
           <WorkspaceToolsDock
@@ -115,17 +128,22 @@ export function StudioPage() {
           />
         ) : (
           <>
-            {builderPanel}
-            <WorkspaceMapPanel open={mapOpen} onToggle={() => setMapOpen((v) => !v)} refreshKey={session.opsRefreshKey} />
-            <WorkbenchPanel
-              open={workbenchOpen}
-              onToggle={() => setWorkbenchOpen((v) => !v)}
-              canEdit={canEditManifest}
-              onSaved={() => {
-                void session.refreshBackend()
-                reloadCatalog()
-              }}
-            />
+            {section === 'builder' ? builderPanel : null}
+            {section === 'map' ? (
+              <WorkspaceMapPanel open embedded onToggle={() => setSection('map')} refreshKey={session.opsRefreshKey} />
+            ) : null}
+            {section === 'workbench' ? (
+              <WorkbenchPanel
+                open
+                embedded
+                onToggle={() => setSection('workbench')}
+                canEdit={canEditManifest}
+                onSaved={() => {
+                  void session.refreshBackend()
+                  reloadCatalog()
+                }}
+              />
+            ) : null}
             {debugOpen ? (
               <>
                 <OpsInsightsPanel refreshKey={session.opsRefreshKey} defaultOpen={false} />

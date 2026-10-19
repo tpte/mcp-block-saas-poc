@@ -17,12 +17,14 @@ import type {
   WorkspaceRole,
 } from '../../shared/domain.ts'
 import { storagePut, storageRenameWorkspace } from '../storage/workspaceStorage.ts'
+import { WORKSPACE_TEMPLATES } from '../../shared/workspaceTemplates.ts'
+import { MANIFEST_FILENAME } from '../../shared/workspaceManifest.ts'
 
 const LEGACY_WORKSPACE_ID = 'ws-hiyen'
 const COMPANY_WORKSPACE_ID = 'ws-company'
 const LEGACY_AGENT_ID = 'agent-hiyen-personal'
 const COMPANY_AGENT_ID = 'agent-company-copilot'
-const BRANDING_VERSION = 3
+const BRANDING_VERSION = 4
 
 const COMPANY_AGENT_PROMPT =
   '你是此工作區的營運後台夥伴。使用者可能不懂程式；用 builder Skills 與 RAG 引導（資料源、模組、畫布），模板只在使用者要還原時套用。繁中。'
@@ -209,6 +211,57 @@ function seed(): DbShape {
   }
 }
 
+function writeCompanyStarterManifest(workspaceId: string, displayName: string, platform: PlatformConfig) {
+  const tpl = WORKSPACE_TEMPLATES['company-starter'].manifest
+  const manifest = {
+    ...tpl,
+    revision: 1,
+    displayName,
+    ui: {
+      ...tpl.ui,
+      platform: { ...tpl.ui.platform, ...platform, modulePillsEnabled: true },
+      spaceProfile: 'admin' as const,
+    },
+  }
+  storagePut(workspaceId, MANIFEST_FILENAME, JSON.stringify(manifest, null, 2))
+}
+
+function ensureCompanyOpsManifest(db: DbShape): boolean {
+  const company = db.workspaces.find((w) => w.slug === 'company')
+  if (!company) return false
+  const path = join(DATA_DIR, 'storage', company.id, MANIFEST_FILENAME)
+  const plat = db.platformByWorkspace[company.id]
+  if (!existsSync(path)) {
+    writeCompanyStarterManifest(company.id, company.name, plat ?? defaultPlatform())
+    return true
+  }
+  try {
+    const raw = JSON.parse(readFileSync(path, 'utf8')) as {
+      ui?: { spaceProfile?: string }
+      modules?: { enabledCatalogIds?: string[] }
+      revision?: number
+    }
+    const ids = raw.modules?.enabledCatalogIds?.length ?? 0
+    if (raw.ui?.spaceProfile === 'admin' && ids >= 4) return false
+    const tpl = WORKSPACE_TEMPLATES['company-starter'].manifest
+    const next = {
+      ...tpl,
+      revision: (raw.revision ?? 1) + 1,
+      displayName: company.name,
+      ui: {
+        ...tpl.ui,
+        platform: { ...tpl.ui.platform, ...(plat ?? {}), modulePillsEnabled: true },
+        spaceProfile: 'admin' as const,
+      },
+    }
+    writeFileSync(path, JSON.stringify(next, null, 2), 'utf8')
+    return true
+  } catch {
+    writeCompanyStarterManifest(company.id, company.name, plat ?? defaultPlatform())
+    return true
+  }
+}
+
 function remapWorkspaceId(db: DbShape, oldId: string, newId: string) {
   for (const ws of db.workspaces) {
     if (ws.id === oldId) ws.id = newId
@@ -319,6 +372,19 @@ function migrateLegacyBranding(db: DbShape): boolean {
   return true
 }
 
+function seedCompanyManifestIfNeeded(db: DbShape) {
+  const company = db.workspaces.find((w) => w.slug === 'company')
+  if (!company) return
+  const path = join(DATA_DIR, 'storage', company.id, MANIFEST_FILENAME)
+  if (!existsSync(path)) {
+    writeCompanyStarterManifest(
+      company.id,
+      company.name,
+      db.platformByWorkspace[company.id] ?? defaultPlatform(),
+    )
+  }
+}
+
 let cache: DbShape | null = null
 
 /** 舊 DB 可能缺某些工作區的 Agent；從 seed 補齊 personal copilot。 */
@@ -351,6 +417,7 @@ function load(): DbShape {
   if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true })
   if (!existsSync(DB_PATH)) {
     cache = seed()
+    seedCompanyManifestIfNeeded(cache)
     persist()
     return cache
   }
@@ -388,6 +455,9 @@ function load(): DbShape {
   }
   if (agentPolicyMigrated) persist()
   if (migrateLegacyBranding(cache)) persist()
+  if (ensureCompanyOpsManifest(cache)) {
+    /* manifest only */
+  }
   return cache
 }
 

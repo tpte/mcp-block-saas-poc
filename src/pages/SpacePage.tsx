@@ -9,7 +9,7 @@ import { ModuleSidebar } from '../features/module/ModuleSidebar'
 import { useModuleCatalog } from '../features/module/useModuleCatalog'
 import { useWorkspaceModules } from '../features/module/useWorkspaceModules'
 import { IdeSpaceView } from '../features/space/IdeSpaceView'
-import { SpaceOpsChrome } from '../features/space/SpaceOpsChrome'
+import { SpaceOpsChrome, type QuickOp } from '../features/space/SpaceOpsChrome'
 import { useAgentSessionContext } from '../features/session/AgentSessionContext'
 import type { BlockAction, UiBlock } from '../types/ui'
 
@@ -60,9 +60,20 @@ export function SpacePage() {
   )
 
   const openStudio = () => navigate(`/w/${slug}/studio`)
+  const openBuilder = () => navigate(`/w/${slug}/studio?focus=builder`)
   const openPalette = () => {
     window.dispatchEvent(new CustomEvent('matrix:open-command-palette'))
   }
+
+  const quickOps: QuickOp[] =
+    slug === 'company'
+      ? [
+          { label: '本週現金流', tool: 'finance:get_cashflow' },
+          { label: '本月請假', tool: 'hr:get_leave' },
+        ]
+      : slug === 'personal'
+        ? [{ label: 'Bridge 列表', tool: 'bridge:list' }]
+        : []
 
   const showSidebar = session.platform.moduleSidebarEnabled
 
@@ -96,8 +107,11 @@ export function SpacePage() {
       <SpaceOpsChrome
         platform={session.platform}
         catalogItems={catalogItems}
+        quickOps={quickOps}
         onRunCatalogItem={session.runCatalogItem}
+        onQuickOp={(tool) => void session.runMcpInvoke(tool)}
         onOpenStudio={openStudio}
+        onOpenBuilder={openBuilder}
         onOpenCommandPalette={openPalette}
         showModuleMenuButton={showSidebar}
         onOpenModuleMenu={() => setMobileModulesOpen(true)}
