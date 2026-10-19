@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Button } from '../../components/ui/button'
-import { addBuilderDataSource, type BuilderDataSourceSummary } from '../../mcp/client'
+import { addBuilderDataSource, previewBuilderManifest, type BuilderDataSourceSummary } from '../../mcp/client'
+import { ManifestDiffPreview } from './ManifestDiffPreview'
 
 const TYPES = [
   { value: 'postgres', label: 'PostgreSQL（正式環境常用）' },
@@ -21,6 +22,17 @@ export function DataSourcePlanForm({ canManage, existing, onSaved, onFlash, onAs
   const [label, setLabel] = useState('主要業務資料庫')
   const [type, setType] = useState<(typeof TYPES)[number]['value']>('postgres')
   const [busy, setBusy] = useState(false)
+  const [preview, setPreview] = useState<{ summary: string; diff: { type: string; text: string }[] } | null>(null)
+
+  async function runPreview() {
+    if (!label.trim()) return
+    try {
+      const res = await previewBuilderManifest({ dataSource: { label, type } })
+      setPreview(res)
+    } catch (err) {
+      onFlash(err instanceof Error ? err.message : '無法預覽')
+    }
+  }
 
   async function submit() {
     setBusy(true)
@@ -28,6 +40,7 @@ export function DataSourcePlanForm({ canManage, existing, onSaved, onFlash, onAs
       await addBuilderDataSource({ label, type })
       onFlash('已把資料源加入 manifest 計畫（連線需 admin 在 server 設 secret）', 'ok')
       setLabel('')
+      setPreview(null)
       onSaved()
     } catch (err) {
       onFlash(err instanceof Error ? err.message : '無法新增')
@@ -85,10 +98,14 @@ export function DataSourcePlanForm({ canManage, existing, onSaved, onFlash, onAs
             </option>
           ))}
         </select>
+        <Button type="button" size="sm" variant="outline" disabled={!canManage || !label.trim()} onClick={() => void runPreview()}>
+          預覽
+        </Button>
         <Button type="button" size="sm" disabled={!canManage || busy || !label.trim()} onClick={() => void submit()}>
           加入計畫
         </Button>
       </div>
+      {preview ? <ManifestDiffPreview summary={preview.summary} diff={preview.diff} /> : null}
       {!canManage ? (
         <p className="mt-1 text-[10px] text-[var(--muted)]">你目前身份無法寫入；可請 Agent 說明後找 admin 加入。</p>
       ) : null}

@@ -116,7 +116,7 @@ export function BuilderHubPanel({
         />
         <ModuleQuickPick
           canManage={canManageManifest}
-          availableIds={ctx?.availableCatalogIds ?? []}
+          catalogOptions={ctx?.catalogOptions ?? []}
           enabledIds={ctx?.enabledCatalogIds ?? []}
           onSaved={() => {
             reloadContext()

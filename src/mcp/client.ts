@@ -374,6 +374,8 @@ export type BuilderDataSourceSummary = {
   health?: string
 }
 
+export type BuilderCatalogOption = { id: string; label: string; group: string }
+
 export type BuilderSetupContext = {
   displayName: string
   enabledModuleCount: number
@@ -382,6 +384,7 @@ export type BuilderSetupContext = {
   suggestedSkillIds: string[]
   availableCatalogIds: string[]
   enabledCatalogIds: string[]
+  catalogOptions: BuilderCatalogOption[]
   dataSources: BuilderDataSourceSummary[]
 }
 
@@ -397,6 +400,20 @@ export async function fetchBuilderTemplates(): Promise<{ templates: BuilderTempl
   const res = await apiFetch('/api/builder/templates')
   await assertOk(res)
   return res.json()
+}
+
+export async function previewBuilderManifest(input: {
+  enabledCatalogIds?: string[]
+  displayName?: string
+  dataSource?: { label: string; type: string; id?: string; secretRef?: string }
+}) {
+  const res = await apiFetch('/api/builder/preview', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  })
+  await assertOk(res)
+  return res.json() as Promise<{ summary: string; diff: { type: string; text: string }[] }>
 }
 
 export async function addBuilderDataSource(input: {

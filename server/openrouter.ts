@@ -43,7 +43,9 @@ const builderToolDefs = BUILDER_TOOL_NAMES.map((name) => ({
               ? '列出可還原的少數 workspace 預設模板'
               : name === 'builder:apply_template'
                 ? '還原模板；confirm=false 時只出確認 UI，true 才寫入 manifest'
-                : '在對話共識後更新 manifest（模組、資料源占位、displayName）',
+                : name === 'builder:preview_manifest'
+                  ? '預覽 manifest 變更 diff，不寫入'
+                  : '在對話共識後更新 manifest；confirm=false 出確認鈕，true 才寫入',
     parameters: {
       type: 'object',
       properties:
@@ -53,8 +55,9 @@ const builderToolDefs = BUILDER_TOOL_NAMES.map((name) => ({
             ? { query: { type: 'string' }, limit: { type: 'number' } }
             : name === 'builder:apply_template'
               ? { templateId: { type: 'string' }, confirm: { type: 'boolean' } }
-              : name === 'builder:update_manifest'
+              : name === 'builder:preview_manifest' || name === 'builder:update_manifest'
                 ? {
+                    confirm: { type: 'boolean' },
                     enabledCatalogIds: { type: 'array', items: { type: 'string' } },
                     displayName: { type: 'string' },
                     appendDataSource: { type: 'object' },

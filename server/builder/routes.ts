@@ -8,9 +8,9 @@ import { listWorkspaceTemplateMeta } from '../../shared/workspaceTemplates.ts'
 import { canManageManifest } from '../workspaces/rbac.ts'
 import { RbacError } from '../workspaces/rbac.ts'
 import {
-  appendManifestDataSource,
-  setEnabledModules,
   validateDataSourceInput,
+  previewManifestPatch,
+  commitManifestPatch,
 } from './manifestOps.ts'
 
 export function registerBuilderRoutes(app: Hono) {
@@ -48,13 +48,36 @@ export function registerBuilderRoutes(app: Hono) {
     return c.json({ hits })
   })
 
+  app.post('/api/builder/preview', async (c) => {
+    const session = sessionFromHeaders(c)
+    requireMinRole(session, 'member')
+    const body = await c.req.json<{
+      enabledCatalogIds?: string[]
+      displayName?: string
+      dataSource?: { label: string; type: string; id?: string; secretRef?: string }
+    }>()
+    try {
+      const patch: Parameters<typeof previewManifestPatch>[1] = {}
+      if (body.enabledCatalogIds) patch.enabledCatalogIds = body.enabledCatalogIds
+      if (body.displayName) patch.displayName = body.displayName
+      if (body.dataSource?.label) patch.appendDataSource = validateDataSourceInput(body.dataSource)
+      const preview = previewManifestPatch(session, patch)
+      return c.json({
+        summary: preview.summary,
+        diff: preview.diff.filter((l) => l.type !== 'same').slice(0, 80),
+      })
+    } catch (err) {
+      return c.json({ error: err instanceof Error ? err.message : 'failed' }, 400)
+    }
+  })
+
   app.post('/api/builder/data-sources', async (c) => {
     const session = sessionFromHeaders(c)
     try {
       if (!canManageManifest(session)) throw new RbacError('需要 admin 才能新增資料源')
       const body = await c.req.json<{ label: string; type: string; id?: string; secretRef?: string }>()
       const record = validateDataSourceInput(body)
-      const manifest = appendManifestDataSource(session, record)
+      const manifest = commitManifestPatch(session, { appendDataSource: record })
       return c.json({ ok: true, dataSource: record, dataSources: manifest.dataSources })
     } catch (err) {
       const message = err instanceof Error ? err.message : 'failed'
@@ -68,7 +91,7 @@ export function registerBuilderRoutes(app: Hono) {
     try {
       if (!canManageManifest(session)) throw new RbacError('需要 admin 才能調整模組')
       const body = await c.req.json<{ enabledCatalogIds: string[] }>()
-      const manifest = setEnabledModules(session, body.enabledCatalogIds ?? [])
+      const manifest = commitManifestPatch(session, { enabledCatalogIds: body.enabledCatalogIds ?? [] })
       return c.json({ ok: true, enabledCatalogIds: manifest.modules.enabledCatalogIds })
     } catch (err) {
       const message = err instanceof Error ? err.message : 'failed'

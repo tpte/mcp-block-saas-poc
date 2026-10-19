@@ -1,5 +1,5 @@
 import type { DataSourceRecord, WorkspaceManifest } from '../../shared/workspaceManifest.ts'
-import { loadManifest, saveManifest } from '../workspaces/manifest.ts'
+import { diffManifestLines, loadManifest, saveManifest } from '../workspaces/manifest.ts'
 import type { SessionContext } from '../../shared/domain.ts'
 import { logManifestEdit } from '../ops/record.ts'
 
@@ -59,4 +59,50 @@ export function setEnabledModules(session: SessionContext, enabledCatalogIds: st
 export function listManifestDataSources(session: SessionContext) {
   const manifest = loadManifest(session.workspace.id, session.workspace.name)
   return manifest.dataSources
+}
+
+export type ManifestPatchInput = {
+  enabledCatalogIds?: string[]
+  appendDataSource?: DataSourceRecord
+  displayName?: string
+}
+
+export function applyManifestPatch(manifest: WorkspaceManifest, patch: ManifestPatchInput) {
+  const next: WorkspaceManifest = JSON.parse(JSON.stringify(manifest)) as WorkspaceManifest
+  if (patch.enabledCatalogIds) {
+    next.modules.enabledCatalogIds = [...new Set(patch.enabledCatalogIds)]
+  }
+  if (patch.appendDataSource) {
+    if (!next.dataSources.some((d) => d.id === patch.appendDataSource!.id)) {
+      next.dataSources.push(patch.appendDataSource)
+    }
+  }
+  if (patch.displayName?.trim()) {
+    next.displayName = patch.displayName.trim().slice(0, 80)
+  }
+  return next
+}
+
+export function commitManifestPatch(session: SessionContext, patch: ManifestPatchInput) {
+  const current = loadManifest(session.workspace.id, session.workspace.name)
+  const next = applyManifestPatch(current, patch)
+  saveManifest(session.workspace.id, next)
+  logManifestEdit(session, next.revision)
+  return next
+}
+
+export function previewManifestPatch(session: SessionContext, patch: ManifestPatchInput) {
+  const current = loadManifest(session.workspace.id, session.workspace.name)
+  const next = applyManifestPatch(current, patch)
+  const diff = diffManifestLines(JSON.stringify(current, null, 2), JSON.stringify(next, null, 2))
+  const summary: string[] = []
+  if (patch.enabledCatalogIds) {
+    const added = patch.enabledCatalogIds.filter((id) => !current.modules.enabledCatalogIds.includes(id))
+    const removed = current.modules.enabledCatalogIds.filter((id) => !patch.enabledCatalogIds!.includes(id))
+    if (added.length) summary.push(`新增模組 ${added.length} 個`)
+    if (removed.length) summary.push(`移除模組 ${removed.length} 個`)
+  }
+  if (patch.appendDataSource) summary.push(`新增資料源：${patch.appendDataSource.label}`)
+  if (patch.displayName) summary.push(`工作區顯示名稱 → ${patch.displayName}`)
+  return { current, next, diff, summary: summary.join(' · ') || '無變更' }
 }

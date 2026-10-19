@@ -4,7 +4,12 @@ import { canManageManifest } from '../workspaces/rbac.ts'
 import { loadManifest, saveManifest } from '../workspaces/manifest.ts'
 import { logManifestEdit } from '../ops/record.ts'
 import type { WorkspaceManifest } from '../../shared/workspaceManifest.ts'
-import { appendManifestDataSource, setEnabledModules, validateDataSourceInput } from './manifestOps.ts'
+import {
+  commitManifestPatch,
+  previewManifestPatch,
+  validateDataSourceInput,
+  type ManifestPatchInput,
+} from './manifestOps.ts'
 import {
   WORKSPACE_TEMPLATES,
   type WorkspaceTemplateId,
@@ -20,8 +25,27 @@ export const BUILDER_TOOL_NAMES = [
   'builder:search_knowledge',
   'builder:list_templates',
   'builder:apply_template',
+  'builder:preview_manifest',
   'builder:update_manifest',
 ] as const
+
+function patchFromPayload(payload?: Record<string, unknown>): ManifestPatchInput {
+  const patch: ManifestPatchInput = {}
+  const enabledCatalogIds = payload?.enabledCatalogIds as string[] | undefined
+  if (enabledCatalogIds?.length) patch.enabledCatalogIds = enabledCatalogIds
+  const appendDataSource = payload?.appendDataSource as Record<string, unknown> | undefined
+  if (appendDataSource?.label) {
+    patch.appendDataSource = validateDataSourceInput({
+      id: String(appendDataSource.id ?? ''),
+      label: String(appendDataSource.label),
+      type: String(appendDataSource.type ?? 'postgres'),
+      secretRef: appendDataSource.secretRef ? String(appendDataSource.secretRef) : undefined,
+    })
+  }
+  const displayName = payload?.displayName as string | undefined
+  if (displayName?.trim()) patch.displayName = displayName.trim()
+  return patch
+}
 
 function requireManifestAdmin() {
   const session = getSession()
@@ -153,31 +177,68 @@ export function builderApplyTemplate(payload?: Record<string, unknown>) {
   return speechToBlocks(`已還原模板「${tpl.label}」。接下來可跟 Agent 調整細節（非寫死流程）。`)
 }
 
+export function builderPreviewManifest(payload?: Record<string, unknown>) {
+  const session = getSession()
+  const patch = patchFromPayload(payload)
+  const { summary, diff } = previewManifestPatch(session, patch)
+  const diffPreview = diff
+    .filter((l) => l.type !== 'same')
+    .slice(0, 24)
+    .map((l) => `${l.type === 'add' ? '+' : '-'} ${l.text}`)
+    .join('\n')
+  return {
+    action: 'RENDER',
+    ui: {
+      layout: 'stack',
+      blocks: [
+        {
+          type: 'block',
+          component: 'ShadcnDocumentBlock',
+          blockId: 'builder-preview',
+          props: {
+            title: 'Manifest 變更預覽',
+            body: `${summary}\n\n${diffPreview || '（無 diff 行）'}`,
+          },
+        },
+      ],
+    },
+  }
+}
+
 export function builderUpdateManifest(payload?: Record<string, unknown>) {
   const session = requireManifestAdmin()
-  let manifest = loadManifest(session.workspace.id, session.workspace.name)
-  const enabledCatalogIds = payload?.enabledCatalogIds as string[] | undefined
-  const appendDataSource = payload?.appendDataSource as Record<string, unknown> | undefined
-  const displayName = payload?.displayName as string | undefined
+  const patch = patchFromPayload(payload)
+  const confirm = payload?.confirm !== false
 
-  if (enabledCatalogIds?.length) {
-    manifest = setEnabledModules(session, enabledCatalogIds)
-  }
-  if (appendDataSource?.label) {
-    const record = validateDataSourceInput({
-      id: String(appendDataSource.id ?? ''),
-      label: String(appendDataSource.label),
-      type: String(appendDataSource.type ?? 'postgres'),
-      secretRef: appendDataSource.secretRef ? String(appendDataSource.secretRef) : undefined,
-    })
-    manifest = appendManifestDataSource(session, record)
-  }
-  if (displayName?.trim()) {
-    manifest.displayName = displayName.trim().slice(0, 80)
-    saveManifest(session.workspace.id, manifest)
-    logManifestEdit(session, manifest.revision)
+  if (!confirm) {
+    const { summary } = previewManifestPatch(session, patch)
+    return {
+      action: 'RENDER',
+      ui: {
+        layout: 'stack',
+        blocks: [
+          {
+            type: 'block',
+            component: 'ShadcnConfirmBlock',
+            blockId: 'builder-manifest-confirm',
+            props: {
+              title: '套用 manifest 變更？',
+              description: `${summary}\n\n確認後才會寫入；可先 builder:preview_manifest 看 diff。`,
+              actions: [
+                {
+                  label: '確認套用',
+                  mcpTool: 'builder:update_manifest',
+                  payload: { ...payload, confirm: true },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    } satisfies McpUiResponse
   }
 
+  const manifest = commitManifestPatch(session, patch)
   const ctx = analyzeSetupContext(manifest)
   return speechToBlocks(
     `已更新 manifest。模組 ${ctx.enabledModuleCount} 個，資料源 ${ctx.dataSourceCount} 個。${ctx.gaps.length ? `提醒：${ctx.gaps[0]}` : ''}`,
@@ -196,6 +257,8 @@ export function invokeBuilderTool(name: string, payload?: Record<string, unknown
       return builderListTemplates()
     case 'builder:apply_template':
       return builderApplyTemplate(payload)
+    case 'builder:preview_manifest':
+      return builderPreviewManifest(payload)
     case 'builder:update_manifest':
       return builderUpdateManifest(payload)
     default:
@@ -212,5 +275,6 @@ export function builderSystemPromptAddon() {
 
 ## Builder 工具
 可用 skill id：${skillIndex}
-打造後台時優先 builder:read_skill / builder:search_knowledge，不要臆測流程；模板還原用 builder:apply_template（需使用者確認）。`
+打造後台時優先 builder:read_skill / builder:search_knowledge，不要臆測流程。
+變更 manifest 前先 builder:preview_manifest；寫入用 builder:update_manifest（confirm=false 出確認鈕，true 才套用）。模板還原用 builder:apply_template。`
 }

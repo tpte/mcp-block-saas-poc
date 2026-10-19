@@ -17,7 +17,7 @@
 2. 資料：業務資料要存在哪？→ 讀 **data-source** skill。
 3. 能力：要開哪些模組（HR、財務…）？→ 讀 **modules-enable** skill。
 4. 畫面：預設畫布與 Block → 讀 **canvas-blocks** skill。
-5. 確認：用 confirm block 列出將變更的 manifest 摘要，再 `builder:update_manifest` 或請使用者同意後套用模板。
+5. 確認：先 `builder:preview_manifest`（或請使用者在「打造後台」按預覽），再 `builder:update_manifest` 且 `confirm=false` 出確認鈕，使用者同意後 `confirm=true` 套用。
 
 ## 工具
 

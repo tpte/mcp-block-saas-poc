@@ -11,6 +11,7 @@ export type SetupContext = {
   suggestedSkillIds: string[]
   availableCatalogIds: string[]
   enabledCatalogIds: string[]
+  catalogOptions: { id: string; label: string; group: string }[]
   dataSources: Pick<DataSourceRecord, 'id' | 'label' | 'type' | 'secretRef' | 'health'>[]
 }
 
@@ -31,9 +32,10 @@ export function analyzeSetupContext(manifest: WorkspaceManifest): SetupContext {
     suggestedSkillIds.push('canvas-blocks')
   }
 
-  const catalog = buildMcpCatalog(undefined, manifest)
-  const availableCatalogIds = catalog.map((c) => c.id)
   const allTools = [...MCP_TOOL_NAMES, 'bridge:list']
+  const fullCatalog = buildMcpCatalog(undefined, { modules: { enabledCatalogIds: allTools } })
+  const catalogOptions = fullCatalog.map((c) => ({ id: c.id, label: c.label, group: c.group }))
+  const availableCatalogIds = catalogOptions.map((c) => c.id)
 
   return {
     displayName: manifest.displayName,
@@ -41,8 +43,9 @@ export function analyzeSetupContext(manifest: WorkspaceManifest): SetupContext {
     dataSourceCount: manifest.dataSources.length,
     gaps,
     suggestedSkillIds: [...new Set(suggestedSkillIds)],
-    availableCatalogIds: availableCatalogIds.length ? availableCatalogIds : [...allTools],
+    availableCatalogIds,
     enabledCatalogIds: enabled,
+    catalogOptions,
     dataSources: manifest.dataSources.map((d) => ({
       id: d.id,
       label: d.label,
