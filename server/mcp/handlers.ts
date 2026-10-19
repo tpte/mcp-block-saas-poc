@@ -1,5 +1,6 @@
 import type { McpUiResponse, UiBlock } from '../../shared/ui.ts'
 import { callMountedMcp, listMountedMcps } from './bridge.ts'
+import { speechToBlocks } from './compose.ts'
 import {
   approveAllLeave,
   assignFirstTicket,
@@ -372,10 +373,7 @@ export function runKeywordAgent(message: string): McpUiResponse {
       ? callMountedMcp('notes', 'notes:list')
       : listMountedMcps()
   }
-  return {
-    action: 'RENDER',
-    ui: dashboardHome(),
-  }
+  return speechToBlocks('我在。直接說你想看的資料，或要我開文檔、對一段 Diff、進入 Plan。')
 }
 
 export function dashboardHome(): { layout: 'stack'; blocks: UiBlock[] } {

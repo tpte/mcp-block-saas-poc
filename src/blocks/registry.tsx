@@ -5,9 +5,15 @@ import { DataTableBlock } from './DataTableBlock'
 import { FormBlock } from './FormBlock'
 import { KanbanBlock } from './KanbanBlock'
 import { MetricGridBlock } from './MetricGridBlock'
+import { ConfirmBlock } from './ConfirmBlock'
+import { DiffBlock } from './DiffBlock'
+import { DocumentBlock } from './DocumentBlock'
+import { KeyPointsBlock } from './KeyPointsBlock'
+import { PlanBlock } from './PlanBlock'
 import { StatsCardBlock } from './StatsCardBlock'
 import { TabsBlock } from './TabsBlock'
 import { TimelineBlock } from './TimelineBlock'
+import { TitleBlock } from './TitleBlock'
 import type { BlockAction, BlockProps, UiBlock } from '../types/ui'
 
 const BLOCK_MAP: Record<string, ComponentType<BlockProps & { onAction?: (a: BlockAction) => void }>> = {
@@ -20,6 +26,12 @@ const BLOCK_MAP: Record<string, ComponentType<BlockProps & { onAction?: (a: Bloc
   ShadcnChartBlock: ChartBlock,
   ShadcnTabsBlock: TabsBlock,
   ShadcnTimelineBlock: TimelineBlock,
+  ShadcnTitleBlock: TitleBlock,
+  ShadcnKeyPointsBlock: KeyPointsBlock,
+  ShadcnConfirmBlock: ConfirmBlock,
+  ShadcnDiffBlock: DiffBlock,
+  ShadcnDocumentBlock: DocumentBlock,
+  ShadcnPlanBlock: PlanBlock,
 }
 
 export function renderBlock(block: UiBlock, onAction?: (action: BlockAction) => void) {

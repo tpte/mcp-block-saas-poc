@@ -57,6 +57,11 @@ export type BlockProps = {
   series?: ChartPoint[]
   tabs?: TabItem[]
   items?: TimelineItem[]
+  points?: string[]
+  before?: string
+  after?: string
+  body?: string
+  steps?: { title: string; detail?: string }[]
 }
 
 export type UiBlock = {

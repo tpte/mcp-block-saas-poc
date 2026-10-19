@@ -6,7 +6,8 @@ import {
   getSiteUrl,
 } from './env.ts'
 import { MCP_TOOL_NAMES } from './mcp/handlers.ts'
-import { BRIDGE_CALL, BRIDGE_LIST, dispatchTool, PLATFORM_TOOL } from './mcp/turn.ts'
+import { mergeUi, speechToBlocks } from './mcp/compose.ts'
+import { BRIDGE_CALL, BRIDGE_LIST, COMPOSE_TOOL, dispatchTool, PLATFORM_TOOL } from './mcp/turn.ts'
 
 export type ChatMessage = {
   role: 'system' | 'user' | 'assistant' | 'tool'
@@ -23,6 +24,41 @@ const toolDefs = [
       parameters: { type: 'object', properties: {}, additionalProperties: true },
     },
   })),
+  {
+    type: 'function' as const,
+    function: {
+      name: COMPOSE_TOOL,
+      description:
+        'Render the reply on the canvas as typed blocks. Always call this for the user-visible answer. kinds: title, points, chart, confirm, diff, document, plan.',
+      parameters: {
+        type: 'object',
+        properties: {
+          blocks: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                kind: { type: 'string', enum: ['title', 'points', 'chart', 'confirm', 'diff', 'document', 'plan'] },
+                text: { type: 'string' },
+                title: { type: 'string' },
+                items: { type: 'array', items: { type: 'string' } },
+                description: { type: 'string' },
+                chartType: { type: 'string', enum: ['bar', 'line'] },
+                series: { type: 'array', items: { type: 'object' } },
+                actions: { type: 'array', items: { type: 'object' } },
+                before: { type: 'string' },
+                after: { type: 'string' },
+                body: { type: 'string' },
+                steps: { type: 'array', items: { type: 'object' } },
+              },
+              required: ['kind'],
+            },
+          },
+        },
+        required: ['blocks'],
+      },
+    },
+  },
   {
     type: 'function' as const,
     function: {
@@ -81,11 +117,11 @@ type ProviderPref =
 async function complete(key: string, messages: ChatMessage[], provider: ProviderPref) {
   const system: ChatMessage = {
     role: 'system',
-    content: `你是 Super MCP 平台的 Orchestrator。畫布資料與平台外殼都透過 MCP 修改。
-看資料用業務 tools：${MCP_TOOL_NAMES.join(', ')}。
-改外殼用 ${PLATFORM_TOOL}。外部 MCP 用 ${BRIDGE_LIST} 與 ${BRIDGE_CALL}（server + tool），不要假設外部認識我們的 Block。
-若使用者同時要看資料又要改外殼，兩個 tool 都要呼叫。
-不要輸出 HTML。回覆用一句繁中。`,
+    content: `你是 Super MCP 超級 Agent。使用者看得到的每句話都必須經 ${COMPOSE_TOOL} 畫在畫布上，不要只回純文字。
+blocks.kind 只能是 title、points、chart、confirm、diff、document、plan。
+一般對話：title + points。要圖：chart。要對方按按鈕：confirm（actions 帶 mcpTool）。比對修改：diff。打開文檔：document。打開 Plan：plan（steps）。
+需要資料時再呼叫：${MCP_TOOL_NAMES.join(', ')}。改外殼用 ${PLATFORM_TOOL}。外部 MCP 用 ${BRIDGE_LIST} / ${BRIDGE_CALL}。
+可同時呼叫資料 tool 與 ${COMPOSE_TOOL}。繁中。不要輸出 HTML。`,
   }
 
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -162,6 +198,7 @@ export async function runOpenRouterAgent(messages: ChatMessage[]) {
   if (!message) throw new Error('OpenRouter empty response')
 
   let ui = null as ReturnType<typeof dispatchTool>['ui']
+  let composed = false
   for (const call of message.tool_calls ?? []) {
     let payload: Record<string, unknown> | undefined
     try {
@@ -169,9 +206,11 @@ export async function runOpenRouterAgent(messages: ChatMessage[]) {
     } catch {
       payload = undefined
     }
+    if (call.function.name === COMPOSE_TOOL) composed = true
     const result = dispatchTool(call.function.name, payload)
-    if (result.ui) ui = result.ui
+    ui = mergeUi(ui, result.ui)
   }
+  if (!composed && message.content?.trim()) ui = mergeUi(speechToBlocks(message.content), ui)
 
   return {
     assistantMessage: message.content?.trim() || (ui ? '已為你更新工作畫面。' : '請再描述一下需求。'),

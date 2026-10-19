@@ -1,6 +1,6 @@
 # Super MCP
 
-整頁智能畫布 + 對話框。外殼（深色、對話框位置、下一句預測數量、標題、畫布寬度）由 `platform:patch` MCP 客製，跟業務資料同一條 Agent 路徑。預設預測 3 句，可說「預測改成 5 個」或「關掉預測提示」。
+整頁畫布就是 Agent 的回覆。`canvas:compose` 把回答拆成標題、重點、圖表、確認、Diff、文檔、Plan。對話框只負責輸入。
 
 外部 MCP 掛在 Bridge 後面：外部只回 JSON，`bridge:call` 轉成 Block。目前內建示範 `notes`。stdio 真連線尚未接上。
 

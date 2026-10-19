@@ -14,8 +14,9 @@ type Props = {
 
 export function Composer({ messages, platform, suggestions, busy, onSend }: Props) {
   const [input, setInput] = useState('')
-  const recent = platform.showHistory ? messages.slice(-4) : []
   const top = platform.composerPosition === 'top'
+  void messages
+  void platform.showHistory
 
   function submit() {
     const text = input.trim()
@@ -47,23 +48,7 @@ export function Composer({ messages, platform, suggestions, busy, onSend }: Prop
             ))}
           </div>
         ) : null}
-        {recent.length > 0 ? (
-          <div className="mb-2 max-h-36 space-y-1.5 overflow-y-auto">
-            {recent.map((m, i) => (
-              <p
-                key={`${m.role}-${i}`}
-                className={
-                  m.role === 'user'
-                    ? 'ml-auto w-fit max-w-[85%] rounded-2xl bg-slate-900 px-3 py-1.5 text-sm text-white'
-                    : 'w-fit max-w-[85%] rounded-2xl bg-[var(--card)] px-3 py-1.5 text-sm text-[var(--fg)] shadow-sm'
-                }
-              >
-                {m.content}
-              </p>
-            ))}
-            {busy ? <p className="text-xs text-[var(--muted)]">正在更新…</p> : null}
-          </div>
-        ) : null}
+        {busy ? <p className="mb-2 text-xs text-[var(--muted)]">正在把回覆畫到畫布…</p> : null}
         <form
           className="flex items-center gap-2 rounded-2xl border border-[var(--line)] bg-[var(--card)] p-2 shadow-lg"
           onSubmit={(e) => {
