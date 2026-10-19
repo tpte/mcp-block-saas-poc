@@ -154,10 +154,18 @@ function seed(): DbShape {
       '你是 HIYEN 工作區的客製化後台夥伴。使用者可能不懂程式；用 builder Skills 與 RAG 引導（資料源、模組、畫布），模板只在使用者要還原時套用。繁中。',
   }
 
+  const samplePersonal: Agent = {
+    ...personalAgent,
+    id: 'agent-sample-personal',
+    workspaceId: wsSample.id,
+    name: 'ERP 示範 Copilot',
+    systemPrompt: '你是示範 ERP 工作區的助手。協助查看示範資料與模組。繁中。',
+  }
+
   return {
     users: [userAlan, userDemo],
     workspaces: [wsPersonal, wsSample, wsHiyen],
-    agents: [orchestrator, workerHr, workerFinance, personalAgent, hiyenPersonal],
+    agents: [orchestrator, workerHr, workerFinance, personalAgent, hiyenPersonal, samplePersonal],
     platformByWorkspace: {
       [wsPersonal.id]: defaultPlatform(),
       [wsSample.id]: { ...defaultPlatform(), title: '示範 ERP', subtitle: 'Sample 資料，非真實商用' },
@@ -196,6 +204,11 @@ function load(): DbShape {
     cache.platformByWorkspace[hiyen.id] = fresh.platformByWorkspace[hiyen.id]!
     cache.agents.push(...fresh.agents.filter((a) => a.workspaceId === hiyen.id))
     cache.workspaceMembers.push(...fresh.workspaceMembers.filter((m) => m.workspaceId === hiyen.id))
+    persist()
+  }
+  if (!cache.agents.some((a) => a.workspaceId === 'ws-sample')) {
+    const fresh = seed()
+    cache.agents.push(...fresh.agents.filter((a) => a.workspaceId === 'ws-sample'))
     persist()
   }
   if (!Array.isArray(cache.agents) || cache.agents.length === 0) {
@@ -341,11 +354,14 @@ export function resolveSession(userId?: string, workspaceId?: string, agentId?: 
     const allowed = listWorkspacesForUser(user.id)
     workspace = allowed[0] ?? db.workspaces[0]
   }
+  const inWorkspace = db.agents.filter((a) => a.workspaceId === workspace.id)
   const agent =
-    db.agents.find((a) => a.id === agentId && a.workspaceId === workspace.id) ??
-    db.agents.find((a) => a.workspaceId === workspace.id && a.kind === 'personal') ??
-    db.agents.find((a) => a.workspaceId === workspace.id) ??
-    db.agents[0]
+    inWorkspace.find((a) => a.id === agentId) ??
+    inWorkspace.find((a) => a.kind === 'personal') ??
+    inWorkspace[0]
+  if (!agent) {
+    throw new Error(`工作區 ${workspace.id} 尚未設定 Agent`)
+  }
   return { user, workspace, activeAgentId: agent.id }
 }
 
