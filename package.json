@@ -10,6 +10,7 @@
     "build": "tsc -b && vite build",
     "start": "NODE_ENV=production SERVE_STATIC=true tsx server/index.ts",
     "lint": "oxlint",
+    "verify:builder": "node scripts/verify-builder.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

@@ -391,6 +391,14 @@ export type BuilderSetupContext = {
 
 export type BuilderTemplateMeta = { id: string; label: string; description: string }
 
+export type BuilderSkillMeta = { id: string; title: string }
+
+export async function fetchBuilderSkills(): Promise<{ skills: BuilderSkillMeta[] }> {
+  const res = await apiFetch('/api/builder/skills')
+  await assertOk(res)
+  return res.json()
+}
+
 export async function fetchBuilderSetupContext(): Promise<{ context: BuilderSetupContext }> {
   const res = await apiFetch('/api/builder/setup-context')
   await assertOk(res)

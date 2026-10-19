@@ -41,7 +41,8 @@ export async function llmPredictSuggestions(ctx: SuggestionContext): Promise<str
   const recent = ctx.messages.slice(-8)
   const transcript = recent.map((m) => `${m.role === 'user' ? '使用者' : 'Agent'}：${m.content}`).join('\n')
   const system = `你是「下一句建議」引擎。根據對話與畫布摘要，預測使用者接下來最可能輸入的 ${count} 句話。
-每句須是完整、可直送的中文短句（8–28 字），可包含：追問資料、切換模組、改 UI、delegate 其他 agent、或操作 MCP。
+每句須是完整、可直送的中文短句（8–28 字），可包含：追問資料、切換模組、改 UI、delegate 其他 agent、操作 MCP、或「打造後台／資料源／read_skill／還原模板」等 builder 引導。
+若使用者像在自建公司後台，優先建議資料源、模組啟用、Skills 引導句，不要只建議 HR 假資料。
 只輸出 JSON 字串陣列，不要 markdown，不要解釋。Agent 角色：${agent?.name ?? 'personal'} (${agent?.kind ?? 'unknown'})。`
 
   const user = [

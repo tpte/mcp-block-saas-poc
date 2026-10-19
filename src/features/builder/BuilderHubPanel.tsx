@@ -10,6 +10,7 @@ import {
 } from '../../mcp/client'
 import { DataSourcePlanForm } from './DataSourcePlanForm'
 import { ModuleQuickPick } from './ModuleQuickPick'
+import { BuilderSkillsPanel } from './BuilderSkillsPanel'
 
 type Props = {
   open: boolean
@@ -136,7 +137,8 @@ export function BuilderHubPanel({
           </Button>
         ))}
       </div>
-      <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-[var(--muted)]">還原模板</p>
+      <BuilderSkillsPanel onAskAgent={onAskAgent} />
+      <p className="mb-1 mt-3 text-[10px] font-medium uppercase tracking-wide text-[var(--muted)]">還原模板</p>
       <ul className="space-y-2">
         {templates.map((t) => (
           <li key={t.id} className="flex flex-wrap items-center justify-between gap-2 rounded border border-[var(--line)] px-2 py-1.5 text-xs">

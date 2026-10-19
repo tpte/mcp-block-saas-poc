@@ -44,6 +44,18 @@ export function readBuilderSkill(skillId: string): string {
   return readFileSync(skillPath, 'utf8')
 }
 
+function splitMarkdownSections(source: string, body: string): KnowledgeChunk[] {
+  const parts = body.split(/\n(?=## )/)
+  if (parts.length <= 1) {
+    return [{ id: source.replace(/[^\w-]+/g, '-'), source, body }]
+  }
+  return parts.map((section, index) => {
+    const heading = section.match(/^## (.+)/)?.[1]?.trim()
+    const id = heading ? `${source}#${heading}` : `${source}#${index}`
+    return { id, source, body: section.trim() }
+  })
+}
+
 function loadKnowledgeChunks(): KnowledgeChunk[] {
   if (!existsSync(KNOWLEDGE_ROOT)) return []
   const chunks: KnowledgeChunk[] = []
@@ -51,18 +63,14 @@ function loadKnowledgeChunks(): KnowledgeChunk[] {
     if (!file.endsWith('.md')) continue
     const full = join(KNOWLEDGE_ROOT, file)
     if (!statSync(full).isFile()) continue
-    chunks.push({
-      id: file.replace(/\.md$/, ''),
-      source: `builder/knowledge/${file}`,
-      body: readFileSync(full, 'utf8'),
-    })
+    const source = `builder/knowledge/${file}`
+    const body = readFileSync(full, 'utf8')
+    chunks.push(...splitMarkdownSections(source, body))
   }
   for (const skill of listBuilderSkills()) {
-    chunks.push({
-      id: `skill-${skill.id}`,
-      source: `builder/skills/${skill.id}/SKILL.md`,
-      body: readFileSync(skill.path, 'utf8'),
-    })
+    const source = `builder/skills/${skill.id}/SKILL.md`
+    const body = readFileSync(skill.path, 'utf8')
+    chunks.push(...splitMarkdownSections(source, body))
   }
   return chunks
 }
