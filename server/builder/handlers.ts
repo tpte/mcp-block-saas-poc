@@ -18,6 +18,7 @@ import {
 import { readBuilderSkill, searchBuilderKnowledge, listBuilderSkills } from './registry.ts'
 import { analyzeSetupContext, formatSetupContextForPrompt } from './setupContext.ts'
 import { speechToBlocks } from '../mcp/compose.ts'
+import { buildWelcomeBlocks } from './welcomeCanvas.ts'
 
 export const BUILDER_TOOL_NAMES = [
   'builder:get_setup_context',
@@ -174,7 +175,18 @@ export function builderApplyTemplate(payload?: Record<string, unknown>) {
   }
   saveManifest(session.workspace.id, next)
   logManifestEdit(session, next.revision)
-  return speechToBlocks(`已還原模板「${tpl.label}」。接下來可跟 Agent 調整細節（非寫死流程）。`)
+  const ctx = analyzeSetupContext(next)
+  return {
+    action: 'RENDER',
+    ui: {
+      layout: 'stack',
+      blocks: buildWelcomeBlocks({
+        title: `已還原模板：${tpl.label}`,
+        ctx,
+        footnote: '細節請跟 Agent 對話或使用 Skills，不要只靠模板。',
+      }),
+    },
+  }
 }
 
 export function builderPreviewManifest(payload?: Record<string, unknown>) {

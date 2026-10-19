@@ -178,6 +178,7 @@ export default function App() {
             onApplied={() => {
               void session.refreshBackend()
               reloadCatalog()
+              void session.runMcpInvoke('builder:get_setup_context')
             }}
             onFlash={session.showFlash}
           />

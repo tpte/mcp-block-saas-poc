@@ -4,6 +4,7 @@ import {
   applyBuilderTemplate,
   fetchBuilderSetupContext,
   fetchBuilderTemplates,
+  invokeMcpTool,
   type BuilderSetupContext,
   type BuilderTemplateMeta,
 } from '../../mcp/client'
@@ -58,6 +59,7 @@ export function BuilderHubPanel({
       onFlash('已還原模板，可繼續跟 Agent 微調', 'ok')
       onApplied()
       reloadContext()
+      void invokeMcpTool('builder:get_setup_context').catch(() => undefined)
     } catch (err) {
       onFlash(err instanceof Error ? err.message : '還原失敗')
     } finally {

@@ -9,6 +9,7 @@ import {
 } from '../../shared/platform.ts'
 import { getWorkspacePlatform, setWorkspacePlatform } from '../db/store.ts'
 import { getSession } from '../requestContext.ts'
+import { builderSuggestionPrompts } from '../builder/suggestions.ts'
 
 export type { PlatformConfig }
 
@@ -121,7 +122,21 @@ function normalizeChord(raw: string) {
 export function predictPrompts(): string[] {
   const config = getPlatform()
   if (!config.suggestionsEnabled) return []
+  let builderFirst: string[] = []
+  try {
+    builderFirst = builderSuggestionPrompts()
+  } catch {
+    builderFirst = []
+  }
   const pools: Record<string, string[]> = {
+    builder: [
+      '我想做自己的後台，先講資料要存哪',
+      '請 read workspace-build skill 帶我開始',
+      '還原 HIYEN 型入門再微調',
+      '幫我 preview manifest 再套用',
+      '一鍵本機 SQLite 適合我嗎？',
+      '顯示本月財務現金流',
+    ],
     home: ['幫我看這個月的員工請假狀況', '顯示本月財務現金流', '改成深色模式', '⌘K 開命令盤', 'block 排序改成 importance', '隱藏 tool trace'],
     hr: ['核准超過 3 天的請假', '顯示本月財務現金流', '改成深色模式', '關閉左側模組列', '把對話框加寬', '畫布改成全寬'],
     finance: ['列出待付發票', '給我看業務 pipeline 看板', '開啟頂部 pill', '畫布改成全寬', '改成深色模式', '關掉預測提示'],
@@ -132,7 +147,8 @@ export function predictPrompts(): string[] {
     bridge: ['列出已掛載的外部 MCP', '讀取 notes 記事', '顯示本月財務現金流', '改成深色模式', '預測改成 5 個', '把對話框移到上方'],
   }
   const list = pools[lastTopic] ?? pools.home
-  return list.slice(0, config.suggestionCount)
+  const merged = [...builderFirst, ...list.filter((p) => !builderFirst.includes(p))]
+  return merged.slice(0, config.suggestionCount)
 }
 
 export function topicFromMessage(text: string) {
@@ -144,6 +160,7 @@ export function topicFromMessage(text: string) {
   if (/客服|工單|support/i.test(text)) return 'support'
   if (/報表|analytics|kpi|渠道/i.test(text)) return 'analytics'
   if (/外部|掛載|bridge|筆記|notes/i.test(text)) return 'bridge'
+  if (/打造|後台|manifest|資料源|資料庫|客製|模板|skill|workspace|hiYEN/i.test(text)) return 'builder'
   return null
 }
 
@@ -155,6 +172,7 @@ export function topicFromTool(tool: string) {
   if (tool.startsWith('support:')) return 'support'
   if (tool.startsWith('analytics:')) return 'analytics'
   if (tool.startsWith('bridge:') || tool.startsWith('notes:')) return 'bridge'
+  if (tool.startsWith('builder:')) return 'builder'
   return lastTopic
 }
 

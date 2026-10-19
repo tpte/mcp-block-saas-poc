@@ -374,6 +374,13 @@ export async function runKeywordAgent(message: string): Promise<McpUiResponse> {
   if (text.includes('請假') || text.includes('員工') || text.includes('hr')) {
     return invokeMcpTool('hr:get_leave')
   }
+  if (
+    /打造|後台|manifest|資料源|資料庫|客製|模板|template|skill|workspace|hiyen|模組.*啟|建立.*庫/.test(text)
+  ) {
+    const { builderGetSetupContext } = await import('../builder/handlers.ts')
+    const ui = builderGetSetupContext()
+    if (ui.action === 'RENDER' && ui.ui) return ui
+  }
   const explained = explainCapability(text)
   if (explained) return explained
   if (text.includes('外部') || text.includes('掛載') || text.includes('bridge') || text.includes('筆記') || text.includes('notes')) {
