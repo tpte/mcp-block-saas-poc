@@ -36,6 +36,11 @@ export function MePage() {
                 </option>
               ))}
             </select>
+            {session.clientSession.agentId === 'agent-orch' ? (
+              <p className="mt-1 text-xs text-amber-800 dark:text-amber-200">
+                日常對話建議選 Personal Copilot；中心調度留給跨模組任務。
+              </p>
+            ) : null}
           </label>
         ) : null}
 

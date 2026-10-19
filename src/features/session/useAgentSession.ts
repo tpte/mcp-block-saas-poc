@@ -298,6 +298,9 @@ export function useAgentSession(options: AgentSessionOptions = {}) {
           })
         }
         if (result.platform) setPlatform(result.platform)
+        if (result.suggestions?.length) {
+          setSuggestions(plainSuggestions(result.suggestions, platform.suggestionCount))
+        }
         appendTrace(result.trace ?? [])
         if (result.runId) setLastRunId(result.runId)
       } catch (err) {
@@ -309,7 +312,7 @@ export function useAgentSession(options: AgentSessionOptions = {}) {
         setBusy(false)
       }
     },
-    [messages, appendTrace, clientSession.agentId, applyUi, persistCanvas, loadCanvas],
+    [messages, appendTrace, clientSession.agentId, applyUi, persistCanvas, loadCanvas, platform.suggestionCount],
   )
 
   const rateAssistantReply = useCallback(
@@ -332,22 +335,24 @@ export function useAgentSession(options: AgentSessionOptions = {}) {
 
   const switchWorkspace = useCallback(
     (workspaceId: string, slug?: string) => {
-      const prevId = loadClientSession().workspaceId
-      if (prevId !== workspaceId) {
-        snapshotWorkspaceUi(prevId, {
-          messages: messagesRef.current,
-          composerDraft: '',
-          trace: traceRef.current,
-        })
-      }
-      const restored = restoreWorkspaceUi(workspaceId)
-      const next = { ...loadClientSession(), workspaceId, agentId: '' }
-      saveClientSession(next)
-      setClientSession(next)
-      if (slug) localStorage.setItem(LAST_SPACE_SLUG_KEY, slug)
-      setMessages(restored?.messages ?? [])
-      setTrace(restored?.trace ?? [])
-      void refreshBackend()
+      void (async () => {
+        const prevId = loadClientSession().workspaceId
+        if (prevId !== workspaceId) {
+          snapshotWorkspaceUi(prevId, {
+            messages: messagesRef.current,
+            composerDraft: '',
+            trace: traceRef.current,
+          })
+        }
+        const restored = restoreWorkspaceUi(workspaceId)
+        const next = { ...loadClientSession(), workspaceId, agentId: '' }
+        saveClientSession(next)
+        setClientSession(next)
+        if (slug) localStorage.setItem(LAST_SPACE_SLUG_KEY, slug)
+        setMessages(restored?.messages ?? [])
+        setTrace(restored?.trace ?? [])
+        await refreshBackend()
+      })()
     },
     [refreshBackend],
   )
