@@ -302,10 +302,12 @@ export function useAgentSession() {
 
   const selectWorkspace = useCallback(
     (workspaceId: string) => {
-      const next = { ...loadClientSession(), workspaceId }
+      const next = { ...loadClientSession(), workspaceId, agentId: '' }
       saveClientSession(next)
       setClientSession(next)
+      setAgents([])
       setMessages([])
+      setCanvas(EMPTY_CANVAS)
       void refreshBackend()
     },
     [refreshBackend],

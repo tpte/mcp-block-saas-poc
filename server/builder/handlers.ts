@@ -58,7 +58,6 @@ export function builderGetSetupContext(): McpUiResponse {
   const { workspace } = getSession()
   const manifest = loadManifest(workspace.id, workspace.name)
   const ctx = analyzeSetupContext(manifest)
-  const prompt = formatSetupContextForPrompt(ctx)
   return {
     action: 'RENDER',
     ui: {
@@ -74,15 +73,6 @@ export function builderGetSetupContext(): McpUiResponse {
             description: ctx.gaps.length ? ctx.gaps.join('\n') : '可繼續跟 Agent 客製模組與畫布。',
           },
         },
-        {
-          type: 'block',
-          component: 'ShadcnDocumentBlock',
-          blockId: 'builder-setup-detail',
-          props: {
-            title: 'Agent 參考摘要',
-            body: prompt,
-          },
-        },
       ],
     },
   }
@@ -92,7 +82,26 @@ export function builderReadSkill(payload?: Record<string, unknown>) {
   const skillId = String(payload?.skillId ?? '').trim()
   if (!skillId) throw new Error('請提供 skillId')
   const body = readBuilderSkill(skillId)
-  return speechToBlocks(`已載入 skill「${skillId}」：\n\n${body.slice(0, 6000)}`)
+  const preview = body.slice(0, 420).trim()
+  return {
+    action: 'RENDER',
+    ui: {
+      layout: 'stack',
+      blocks: [
+        {
+          type: 'block',
+          component: 'ShadcnAlertBlock',
+          blockId: `builder-skill-${skillId}`,
+          presentation: { role: 'context', collapsible: true, priority: 2 },
+          props: {
+            variant: 'default',
+            title: `已讀 Skill：${skillId}`,
+            description: `${preview}${body.length > 420 ? '…（Agent 已讀完整 SKILL，會用白話帶你）' : ''}`,
+          },
+        },
+      ],
+    },
+  }
 }
 
 export function builderSearchKnowledge(payload?: Record<string, unknown>) {
