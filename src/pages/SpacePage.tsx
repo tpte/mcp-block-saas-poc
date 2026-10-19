@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import type { SpaceProfile } from '../../shared/workspaceManifest.ts'
 import { BlockCanvas } from '../features/canvas/BlockCanvas'
 import { Composer, type ComposerHandle } from '../features/chat/Composer'
+import { ConversationThread } from '../features/chat/ConversationThread'
 import { IdeSpaceView } from '../features/space/IdeSpaceView'
 import { useAgentSessionContext } from '../features/session/AgentSessionContext'
 import { fetchManifest } from '../mcp/client'
@@ -53,12 +54,13 @@ export function SpacePage() {
           top ? 'min-h-0 overflow-y-auto px-4 pb-4 pt-44 md:px-6' : 'min-h-0 overflow-y-auto px-4 pb-3 pt-2 md:px-6'
         }
       >
+        <ConversationThread messages={session.messages} busy={session.busy} />
         {session.busy && session.trace.length > 0 ? (
           <p className="mx-auto mb-3 w-full max-w-6xl text-xs text-[var(--muted)]">
             {session.trace[session.trace.length - 1]}
           </p>
         ) : null}
-        {spaceProfile === 'ide' ? (
+        {session.messages.length > 0 && session.canvas.blocks.length === 0 ? null : spaceProfile === 'ide' ? (
           <IdeSpaceView slug={slug} canvas={canvasBlock} />
         ) : (
           canvasBlock

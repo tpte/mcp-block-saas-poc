@@ -10,7 +10,6 @@ import {
   fetchHealth,
   fetchPlatform,
   fetchSession,
-  fetchSuggestions,
   fetchWorkspaces,
   invokeMcpTool,
   patchCanvasBlock,
@@ -32,7 +31,6 @@ import {
 } from './workspaceUiCache.ts'
 import type { CanvasPage } from '../../types/ui'
 import { applyUiResponse, EMPTY_CANVAS } from './applyUiResponse'
-import { summarizeCanvas } from './canvasSummary'
 
 export type ChatMessage = {
   role: 'user' | 'assistant'
@@ -156,27 +154,12 @@ export function useAgentSession(options: AgentSessionOptions = {}) {
       return
     }
     try {
-      const { suggestions: next } = await fetchSuggestions({
-        messages,
-        canvasSummary: summarizeCanvas(canvas),
-        agentId: clientSession.agentId,
-      })
-      setSuggestions(plainSuggestions(next, platform.suggestionCount))
+      const platformData = await fetchPlatform()
+      setSuggestions(plainSuggestions(platformData.suggestions, platform.suggestionCount))
     } catch {
-      try {
-        const platformData = await fetchPlatform()
-        setSuggestions(plainSuggestions(platformData.suggestions, platform.suggestionCount))
-      } catch {
-        /* keep previous pills */
-      }
+      /* 建議句不打模型，失敗就沿用上一組 */
     }
-  }, [
-    messages,
-    canvas,
-    platform.suggestionsEnabled,
-    platform.suggestionCount,
-    clientSession.agentId,
-  ])
+  }, [platform.suggestionsEnabled, platform.suggestionCount])
 
   const refreshBackend = useCallback(async () => {
     try {

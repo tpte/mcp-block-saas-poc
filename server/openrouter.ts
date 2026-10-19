@@ -21,6 +21,8 @@ import {
 import type { ToolTraceEntry } from '../shared/trace.ts'
 import { BUILDER_TOOL_NAMES } from './builder/handlers.ts'
 import { builderSystemPromptAddon } from './builder/handlers.ts'
+import { classifyTurn, type TurnLane } from './agent/lane.ts'
+import { webSearch } from './agent/commonTools.ts'
 
 export type ChatMessage = {
   role: 'system' | 'user' | 'assistant' | 'tool'
@@ -68,7 +70,43 @@ const builderToolDefs = BUILDER_TOOL_NAMES.map((name) => ({
   },
 }))
 
+const commonToolDefs = [
+  {
+    type: 'function' as const,
+    function: {
+      name: 'web:search',
+      description: '搜尋公開網頁摘要。使用者要查新聞、天氣、人物、最新資訊時才用。',
+      parameters: {
+        type: 'object',
+        properties: { query: { type: 'string' } },
+        required: ['query'],
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'util:now',
+      description: '台北目前的日期與時間。',
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'util:calc',
+      description: '計算四則運算。expression 只能含數字與 + - * / ( ) %。',
+      parameters: {
+        type: 'object',
+        properties: { expression: { type: 'string' } },
+        required: ['expression'],
+      },
+    },
+  },
+]
+
 const toolDefs = [
+  ...commonToolDefs,
   ...builderToolDefs,
   ...MCP_TOOL_NAMES.map((name) => ({
     type: 'function' as const,
@@ -195,22 +233,38 @@ type ProviderPref =
   | { only: string[]; allow_fallbacks: boolean }
   | { order: string[]; allow_fallbacks: boolean }
 
+function systemFor(lane: TurnLane, systemExtra: string, evidence?: string) {
+  if (lane === 'chat') {
+    return `${systemExtra}
+你是 MATRIX 裡的助手，跟使用者正常說話。寒暄、閒聊、寫一句話，都用簡短繁中直接回答。
+不要呼叫工具，不要做報表，不要列假數據，不要用 markdown。`
+  }
+  if (lane === 'lookup') {
+    return `${systemExtra}
+你是 MATRIX 裡的助手。用繁中直接回答，不要說「根據摘要」，不要用 markdown。資料不夠就說查不到，不要編造數字。
+不要做報表，不要呼叫工作區資料工具。
+${evidence ? `\n參考資料：\n${evidence}` : ''}`
+  }
+  return `${systemExtra}
+你是 MATRIX 工作區助手（與 HIYEN MATRIX 無關）。只有使用者明確要看資料、改畫面或打造後台時，才呼叫一個最相關的工具，並用 ${COMPOSE_TOOL} 把結果畫上畫布。
+不要為了寒暄一次呼叫多個報表。blocks.kind 只能是 title、points、chart、confirm、diff、document、plan。
+需要事實再呼叫 web:search；時間用 util:now；計算用 util:calc。
+工作區資料工具：${MCP_TOOL_NAMES.join(', ')}。改外殼用 ${PLATFORM_TOOL}。外部 MCP 用 ${BRIDGE_LIST} / ${BRIDGE_CALL}。
+繁中。不要輸出 HTML。`
+}
+
 async function complete(
   key: string,
   messages: ChatMessage[],
   provider: ProviderPref,
-  tools: typeof toolDefs,
+  tools: typeof toolDefs | null,
   systemExtra: string,
+  lane: TurnLane,
+  evidence?: string,
 ) {
   const system: ChatMessage = {
     role: 'system',
-    content: `${systemExtra}
-你是 MATRIX 超級 Agent（個人 MCP 駕駛艙；與 HIYEN MATRIX 無關）。使用者看得到的每句話都必須經 ${COMPOSE_TOOL} 畫在畫布上，不要只回純文字。
-blocks.kind 只能是 title、points、chart、confirm、diff、document、plan。
-一般對話一定要有 title，加上至少 3 個 points，每點寫完整一句，不要只回標題或一個詞。問某個 MCP 能做什麼時，先講它的 tools 與限制，再給 confirm。要圖用 chart，要按鈕用 confirm，比對用 diff，長文用 document，步驟用 plan。
-打造／客製化後台時用 builder:*（Skills+RAG 引導，模板只作還原）。需要資料時再呼叫：${MCP_TOOL_NAMES.join(', ')}。改外殼用 ${PLATFORM_TOOL}。外部 MCP 用 ${BRIDGE_LIST} / ${BRIDGE_CALL}。
-可同時呼叫資料 tool 與 ${COMPOSE_TOOL}。compose 的 blocks 依使用者問題決定種類與順序（先給最該先懂的一塊），可附 priority／role／collapsible。勿機械固定 alert→table。
-繁中。不要輸出 HTML。`,
+    content: systemFor(lane, systemExtra, evidence),
   }
 
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -224,9 +278,9 @@ blocks.kind 只能是 title、points、chart、confirm、diff、document、plan�
     body: JSON.stringify({
       model: getOpenRouterModel(),
       messages: [system, ...messages.filter((m) => m.role !== 'system')],
-      tools,
-      tool_choice: 'auto',
-      temperature: 0.2,
+      ...(tools ? { tools, tool_choice: 'auto' as const } : {}),
+      temperature: lane === 'chat' ? 0.6 : 0.2,
+      max_tokens: lane === 'chat' ? 220 : lane === 'lookup' ? 480 : 700,
       provider,
     }),
   })
@@ -266,13 +320,19 @@ export async function runOpenRouterAgent(messages: ChatMessage[], agentId?: stri
 
   const activeId = agentId ?? getSession().activeAgentId
   const agent = getAgent(activeId)
-  const tools = filterToolsForAgent(toolDefs, activeId)
+  const lastUser = [...messages].reverse().find((m) => m.role === 'user')?.content ?? ''
+  const lane = classifyTurn(lastUser)
+  const tools =
+    lane === 'workspace' ? filterToolsForAgent(toolDefs, activeId) : null
   let systemExtra = agent ? `${agent.systemPrompt}\nAgent: ${agent.name} (${agent.kind}).\n` : ''
-  try {
-    systemExtra += `\n${builderSystemPromptAddon()}\n`
-  } catch {
-    /* session may be unavailable in tests */
+  if (lane === 'workspace') {
+    try {
+      systemExtra += `\n${builderSystemPromptAddon()}\n`
+    } catch {
+      /* session may be unavailable in tests */
+    }
   }
+  const evidence = lane === 'lookup' ? await webSearch(lastUser) : undefined
 
   const pinned = getProviderOnly()
   const attempts: ProviderPref[] = [
@@ -284,7 +344,7 @@ export async function runOpenRouterAgent(messages: ChatMessage[], agentId?: stri
   let lastError: unknown
   for (const provider of attempts) {
     try {
-      data = await complete(key, messages, provider, tools, systemExtra)
+      data = await complete(key, messages, provider, tools, systemExtra, lane, evidence)
       break
     } catch (err) {
       lastError = err
@@ -295,6 +355,17 @@ export async function runOpenRouterAgent(messages: ChatMessage[], agentId?: stri
 
   const message = data.choices?.[0]?.message
   if (!message) throw new Error('OpenRouter empty response')
+
+  if (lane !== 'workspace') {
+    const text = message.content?.trim() || evidence || '我在，再說一次你想問的。'
+    return {
+      assistantMessage: text,
+      ui: null,
+      trace: [] as ToolTraceEntry[],
+      provider: data.provider ?? null,
+      model: getOpenRouterModel(),
+    }
+  }
 
   let ui = null as ReturnType<typeof dispatchToolWithTrace>['ui']
   const trace: ToolTraceEntry[] = []

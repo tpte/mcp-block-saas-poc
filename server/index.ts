@@ -21,6 +21,7 @@ import { explainCapability } from './mcp/bridge.ts'
 import { mountStdioFromEnv } from './mcp/external/stdioMcp.ts'
 import { runKeywordAgent } from './mcp/handlers.ts'
 import { getPlatform, predictPrompts } from './mcp/platform.ts'
+import { chatFallback, classifyTurn, localAnswer } from './agent/lane.ts'
 import { llmPredictSuggestions } from './suggestions/llmPrompts.ts'
 import { dispatchToolWithTrace, finalizeTurn } from './mcp/turn.ts'
 import { getRunTree, listAgents, listRecentRuns, listUsers, resolveSession } from './db/store.ts'
@@ -257,6 +258,35 @@ app.post('/api/agent/chat', async (c) => {
       const started = performance.now()
       const userLogId = logUserMessage(chatSession, text, { source: 'chat' })
       await status('已收到問題')
+      const instant = localAnswer(text)
+      if (instant) {
+        const replyLogId = logAssistantReply(chatSession, {
+          parentId: userLogId,
+          userText: text,
+          runId,
+          mode: 'offline',
+          assistantMessage: instant,
+          trace: [],
+          provider: null,
+          durationMs: Math.round(performance.now() - started),
+        })
+        await finish({
+          mode: 'offline',
+          assistantMessage: instant,
+          ui: null,
+          trace: [],
+          runId,
+          runNodes: [],
+          platform: getPlatform(),
+          suggestions: predictPrompts(),
+          provider: null,
+          model: null,
+          agentId: chatSession.activeAgentId,
+          replyLogId,
+        })
+        return
+      }
+
       const explained = explainCapability(text)
       if (explained) {
         await status('這題在問已掛載的 MCP，直接讀工具清單')
@@ -300,6 +330,34 @@ app.post('/api/agent/chat', async (c) => {
       try {
         if (!getOpenRouterKey()) {
           clearInterval(timer)
+          if (classifyTurn(text) !== 'workspace') {
+            const reply = chatFallback(text)
+            const replyLogId = logAssistantReply(chatSession, {
+              parentId: userLogId,
+              userText: text,
+              runId,
+              mode: 'offline',
+              assistantMessage: reply,
+              trace: [],
+              provider: null,
+              durationMs: Math.round(performance.now() - started),
+            })
+            await finish({
+              mode: 'offline',
+              assistantMessage: reply,
+              ui: null,
+              trace: [],
+              runId,
+              runNodes: [],
+              platform: getPlatform(),
+              suggestions: predictPrompts(),
+              provider: null,
+              model: null,
+              agentId: chatSession.activeAgentId,
+              replyLogId,
+            })
+            return
+          }
           await status('沒有 OpenRouter key，改走本機 MCP')
           const started = performance.now()
           const ui = await runKeywordAgent(text)
@@ -345,7 +403,7 @@ app.post('/api/agent/chat', async (c) => {
         clearInterval(timer)
         await status(result.provider ? `模型已回覆，上游是 ${result.provider}` : '模型已回覆')
         const turn = finalizeTurn(text, result.ui)
-        await status('正在把回覆分塊畫上畫布')
+        if (result.ui) await status('正在把回覆畫上畫面')
         const nodes = persistTrace(result.trace, { runId, parentNodeId: null })
         const replyLogId = logAssistantReply(chatSession, {
           parentId: userLogId,
@@ -373,6 +431,36 @@ app.post('/api/agent/chat', async (c) => {
         })
       } catch (err) {
         clearInterval(timer)
+        if (classifyTurn(text) !== 'workspace') {
+          const reply = chatFallback(text)
+          const replyLogId = logAssistantReply(chatSession, {
+            parentId: userLogId,
+            userText: text,
+            runId,
+            mode: 'fallback',
+            assistantMessage: reply,
+            trace: [],
+            provider: null,
+            error: err instanceof Error ? err.message : 'failed',
+            durationMs: Math.round(performance.now() - started),
+            ok: false,
+          })
+          await finish({
+            mode: 'fallback',
+            assistantMessage: reply,
+            ui: null,
+            trace: [],
+            runId,
+            runNodes: [],
+            platform: getPlatform(),
+            suggestions: predictPrompts(),
+            provider: null,
+            model: null,
+            agentId: chatSession.activeAgentId,
+            replyLogId,
+          })
+          return
+        }
         await status('模型沒有順利回完，改用本機 MCP')
         const turn = finalizeTurn(text, await runKeywordAgent(text))
         const trace = [

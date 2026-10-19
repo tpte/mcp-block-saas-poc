@@ -75,7 +75,7 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
             ))}
           </div>
         ) : null}
-        {busy ? <p className="mb-2 text-xs text-[var(--muted)]">正在把回覆畫到畫布…</p> : null}
+        {busy ? <p className="mb-2 text-xs text-[var(--muted)]">回覆中…</p> : null}
         <form
           className="flex items-center gap-2 rounded-2xl border border-[var(--line)] bg-[var(--card)] p-2 shadow-lg"
           onSubmit={(e) => {

@@ -17,6 +17,8 @@ import {
   type PlatformConfig,
 } from './platform.ts'
 import { AGENT_DELEGATE, BRIDGE_CALL, BRIDGE_LIST, COMPOSE_TOOL, PLATFORM_TOOL } from './tools.ts'
+import { safeCalc } from '../agent/lane.ts'
+import { webSearch } from '../agent/commonTools.ts'
 import { invokeBuilderTool } from '../builder/handlers.ts'
 
 export { PLATFORM_TOOL, BRIDGE_LIST, BRIDGE_CALL, COMPOSE_TOOL, AGENT_DELEGATE } from './tools.ts'
@@ -97,6 +99,24 @@ async function dispatchToolInner(name: string, payload?: Record<string, unknown>
     const tool = String(payload?.tool ?? '')
     const args = (payload?.args as Record<string, unknown> | undefined) ?? {}
     return callMountedMcp(server, tool, args)
+  }
+  if (name === 'web:search') {
+    const query = String(payload?.query ?? '')
+    const text = await webSearch(query)
+    return speechToBlocks(text)
+  }
+  if (name === 'util:now') {
+    return speechToBlocks(
+      new Intl.DateTimeFormat('zh-TW', {
+        dateStyle: 'full',
+        timeStyle: 'short',
+        timeZone: 'Asia/Taipei',
+      }).format(new Date()),
+    )
+  }
+  if (name === 'util:calc') {
+    const value = safeCalc(String(payload?.expression ?? ''))
+    return speechToBlocks(value == null ? '這個算式無法計算。' : String(value))
   }
   if (name.startsWith('builder:')) {
     const out = invokeBuilderTool(name, payload)
