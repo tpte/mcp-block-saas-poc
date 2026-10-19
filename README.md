@@ -1,29 +1,38 @@
-# MCP Block SaaS PoC
+# MCP Block SaaS MVP
 
-Minimal proof-of-concept for the **MCP SaaS 架構藍圖** Gemini share: Agent-driven orchestration, mock MCP servers, and a **shadcn-style Block Registry** that renders strict JSON UI payloads (`RENDER` / `UPDATE_DATA`).
+Agent-driven SaaS demo: **6 MCP modules**, **9 Block types**, and **OpenRouter** (`deepseek/deepseek-v4.1-flash-1017` pinned to **Together**).
 
 ## Stack
 
-- Vite + React + TypeScript
-- Tailwind CSS v4
-- In-browser mock MCP (no real LLM or MCP transport)
+- Frontend: Vite + React + TypeScript + Tailwind v4 + Recharts
+- Backend: Hono (Node) — OpenRouter proxy + mock MCP handlers
+- Shared UI schema: [`shared/ui.ts`](shared/ui.ts)
 
-## Run
+## Setup
 
 ```bash
+cd ~/Projects/mcp-block-saas-poc
+cp .env.example .env
+# Set OPENROUTER_API_KEY (or rely on ~/.hermes/.env at server startup)
 npm install
-npm run dev
+npm run dev:all
 ```
 
-Open the URL printed by Vite (default `http://localhost:5173`).
+- Web: http://localhost:5173  
+- API: http://127.0.0.1:8787/api/health  
 
-## Demo flow
+Stop: `Ctrl+C` in the terminal running `dev:all`.
 
-1. Send the sample HR leave prompt (pre-filled).
-2. See `ShadcnDataTableBlock` rendered from MCP JSON.
-3. Click **核准全選** → `hr:approve_all` returns `UPDATE_DATA` patch.
-4. Try **財務 Finance** module for stacked blocks.
+## Flow
+
+1. Sidebar picks a module → deterministic MCP tool → Block Canvas.
+2. Chat sends natural language → OpenRouter tool-calling → same MCP tools → UI `RENDER` / `UPDATE_DATA`.
+3. Block buttons (e.g. 核准全選) call `/api/mcp/invoke` without LLM latency.
+
+## Modules
+
+HR, Finance, Sales, Inventory, Support, Analytics — see [`server/mcp/handlers.ts`](server/mcp/handlers.ts).
 
 ## Source
 
-Concept and JSON examples from [Gemini share](https://share.gemini.google/fsckAbVh3XMG) (Oct 19, 2026).
+Architecture concept from [Gemini share](https://share.gemini.google/fsckAbVh3XMG).

@@ -1,43 +1,22 @@
-export type BlockAction = {
-  label: string
-  mcpTool: string
-  payload?: Record<string, unknown>
+export type {
+  BlockAction,
+  BlockProps,
+  ChartPoint,
+  KanbanColumn,
+  MetricItem,
+  McpUiResponse,
+  RenderPayload,
+  TabItem,
+  TableColumn,
+  TableRow,
+  TimelineItem,
+  UiBlock,
+  UpdatePayload,
+} from '../../shared/ui.ts'
+
+export { BLOCK_COMPONENTS } from '../../shared/ui.ts'
+
+export function flattenUi(ui: import('../../shared/ui.ts').UiBlock | { layout: 'stack'; blocks: import('../../shared/ui.ts').UiBlock[] }) {
+  if ('layout' in ui) return ui.blocks
+  return [ui]
 }
-
-export type TableColumn = {
-  key: string
-  label: string
-}
-
-export type TableRow = Record<string, string | number>
-
-export type BlockProps = {
-  title?: string
-  columns?: TableColumn[]
-  data?: TableRow[]
-  actions?: BlockAction[]
-  value?: string
-  label?: string
-  trend?: string
-  description?: string
-}
-
-export type UiBlock = {
-  type: 'block'
-  component: string
-  blockId: string
-  props: BlockProps
-}
-
-export type RenderPayload = {
-  action: 'RENDER'
-  ui: UiBlock | { layout: 'stack'; blocks: UiBlock[] }
-}
-
-export type UpdatePayload = {
-  action: 'UPDATE_DATA'
-  targetBlockId: string
-  patch: Partial<BlockProps>
-}
-
-export type McpUiResponse = RenderPayload | UpdatePayload

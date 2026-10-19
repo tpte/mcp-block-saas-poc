@@ -1,13 +1,25 @@
 import type { ComponentType } from 'react'
-import type { BlockAction, BlockProps, UiBlock } from '../types/ui'
+import { AlertBlock } from './AlertBlock'
+import { ChartBlock } from './ChartBlock'
 import { DataTableBlock } from './DataTableBlock'
 import { FormBlock } from './FormBlock'
+import { KanbanBlock } from './KanbanBlock'
+import { MetricGridBlock } from './MetricGridBlock'
 import { StatsCardBlock } from './StatsCardBlock'
+import { TabsBlock } from './TabsBlock'
+import { TimelineBlock } from './TimelineBlock'
+import type { BlockAction, BlockProps, UiBlock } from '../types/ui'
 
 const BLOCK_MAP: Record<string, ComponentType<BlockProps & { onAction?: (a: BlockAction) => void }>> = {
   ShadcnDataTableBlock: DataTableBlock,
   ShadcnStatsCardBlock: StatsCardBlock,
   ShadcnFormBlock: FormBlock,
+  ShadcnMetricGridBlock: MetricGridBlock,
+  ShadcnAlertBlock: AlertBlock,
+  ShadcnKanbanBlock: KanbanBlock,
+  ShadcnChartBlock: ChartBlock,
+  ShadcnTabsBlock: TabsBlock,
+  ShadcnTimelineBlock: TimelineBlock,
 }
 
 export function renderBlock(block: UiBlock, onAction?: (action: BlockAction) => void) {
@@ -22,7 +34,4 @@ export function renderBlock(block: UiBlock, onAction?: (action: BlockAction) => 
   return <Component key={block.blockId} {...block.props} onAction={onAction} />
 }
 
-export function flattenUi(ui: UiBlock | { layout: 'stack'; blocks: UiBlock[] }): UiBlock[] {
-  if ('layout' in ui) return ui.blocks
-  return [ui]
-}
+export { flattenUi } from '../types/ui'
