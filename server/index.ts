@@ -428,6 +428,14 @@ if (serveUi && existsSync(distDir)) {
     if (c.req.path.startsWith('/api/')) return next()
     return serveStatic({ path: './dist/index.html' })(c, next)
   })
+} else {
+  const devUi = (process.env.MATRIX_DEV_UI ?? 'http://127.0.0.1:5173').replace(/\/$/, '')
+  app.get('*', (c) => {
+    if (c.req.path.startsWith('/api/')) return c.notFound()
+    const target = new URL(c.req.path, `${devUi}/`)
+    target.search = new URL(c.req.url).search
+    return c.redirect(target.toString())
+  })
 }
 
 const port = Number(process.env.PORT || 8787)
