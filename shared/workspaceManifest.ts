@@ -1,6 +1,7 @@
 import type { PlatformConfig } from './platform.ts'
 import type { McpMountRecord } from './domain.ts'
 import type { DefaultCanvasLayout } from './platform.ts'
+import type { WorkspaceModule } from './modulePage.ts'
 
 export type DataSourceType = 'postgres' | 'supabase' | 'sqlite' | 'http_api'
 
@@ -33,7 +34,9 @@ export type WorkspaceManifest = {
   revision: number
   displayName: string
   modules: {
-    enabledCatalogIds: string[]
+    /** @deprecated use instances + per-module tool filter */
+    enabledCatalogIds?: string[]
+    instances?: WorkspaceModule[]
   }
   dataSources: DataSourceRecord[]
   ui: {

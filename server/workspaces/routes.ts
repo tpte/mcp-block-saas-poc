@@ -1,7 +1,13 @@
 import type { Hono } from 'hono'
 import { randomUUID } from 'node:crypto'
 import { BLOCK_TEMPLATES } from '../../shared/blockTemplates.ts'
-import { loadCanvas, saveCanvas } from '../canvas/store.ts'
+import {
+  loadModuleCanvas,
+  resolveModuleIdFromRequest,
+  saveModuleCanvas,
+  type StoredCanvas,
+} from '../canvas/store.ts'
+import { getWorkspaceModule, listWorkspaceModules } from './moduleRegistry.ts'
 import { validateBlockProps } from '../canvas/validate.ts'
 import {
   acceptInvite,
@@ -175,31 +181,53 @@ export function registerWorkspaceRoutes(app: Hono) {
 
   app.get('/api/blocks/templates', (c) => c.json({ templates: BLOCK_TEMPLATES }))
 
-  app.get('/api/canvas', (c) => {
+  app.get('/api/modules', (c) => {
     const session = sessionFromHeaders(c)
     requireMinRole(session, 'viewer')
-    const canvas = loadCanvas(session.workspace.id)
     const manifest = loadManifest(session.workspace.id, session.workspace.name)
-    return c.json({ canvas, mergeMode: manifest.canvasMergeMode })
+    const modules = listWorkspaceModules(manifest)
+    return c.json({ modules })
   })
 
-  app.put('/api/canvas', async (c) => {
+  function moduleIdForCanvas(c: { req: { param: (k: string) => string; header: (k: string) => string | undefined } }) {
+    return resolveModuleIdFromRequest(c.req.param('moduleId'), c.req.header('x-module-id'))
+  }
+
+  app.get('/api/modules/:moduleId/canvas', (c) => {
+    const session = sessionFromHeaders(c)
+    requireMinRole(session, 'viewer')
+    const moduleId = moduleIdForCanvas(c)
+    const manifest = loadManifest(session.workspace.id, session.workspace.name)
+    if (!['_legacy', '_home'].includes(moduleId) && !getWorkspaceModule(manifest, moduleId)) {
+      return c.json({ error: 'module 不存在' }, 404)
+    }
+    const canvas = loadModuleCanvas(session.workspace.id, moduleId)
+    return c.json({ canvas, moduleId, mergeMode: manifest.canvasMergeMode })
+  })
+
+  app.put('/api/modules/:moduleId/canvas', async (c) => {
     const session = sessionFromHeaders(c)
     try {
       requireMinRole(session, 'member')
-      const body = await c.req.json<{ canvas: typeof loadCanvas extends (...args: never[]) => infer R ? R : never; revision?: number }>()
-      const saved = saveCanvas(session.workspace.id, body.canvas, body.revision)
-      logCanvasOp(session, 'canvas.edit', {})
-      return c.json({ canvas: saved })
+      const moduleId = moduleIdForCanvas(c)
+      const manifest = loadManifest(session.workspace.id, session.workspace.name)
+      if (!['_legacy', '_home'].includes(moduleId) && !getWorkspaceModule(manifest, moduleId)) {
+        throw new Error('module 不存在')
+      }
+      const body = await c.req.json<{ canvas: StoredCanvas; revision?: number }>()
+      const saved = saveModuleCanvas(session.workspace.id, moduleId, body.canvas, body.revision)
+      logCanvasOp(session, 'canvas.edit', { moduleId })
+      return c.json({ canvas: saved, moduleId })
     } catch (err) {
       return rbacJson(c, err)
     }
   })
 
-  app.post('/api/canvas/blocks', async (c) => {
+  app.post('/api/modules/:moduleId/canvas/blocks', async (c) => {
     const session = sessionFromHeaders(c)
     try {
       requireMinRole(session, 'member')
+      const moduleId = moduleIdForCanvas(c)
       const body = await c.req.json<{ templateId: string; props?: Record<string, unknown> }>()
       const tpl = BLOCK_TEMPLATES.find((t) => t.id === body.templateId)
       if (!tpl) throw new Error('未知模板')
@@ -209,7 +237,7 @@ export function registerWorkspaceRoutes(app: Hono) {
         session.workspace.id,
         session.workspace.name,
       ).props
-      const canvas = loadCanvas(session.workspace.id)
+      const canvas = loadModuleCanvas(session.workspace.id, moduleId)
       const block = {
         type: 'block' as const,
         component: tpl.component,
@@ -217,20 +245,21 @@ export function registerWorkspaceRoutes(app: Hono) {
         props,
       }
       canvas.blocks.push(block)
-      const saved = saveCanvas(session.workspace.id, canvas)
-      logCanvasOp(session, 'canvas.add', { blockId: block.blockId, templateId: body.templateId })
-      return c.json({ canvas: saved, blockId: block.blockId })
+      const saved = saveModuleCanvas(session.workspace.id, moduleId, canvas)
+      logCanvasOp(session, 'canvas.add', { blockId: block.blockId, templateId: body.templateId, moduleId })
+      return c.json({ canvas: saved, blockId: block.blockId, moduleId })
     } catch (err) {
       return rbacJson(c, err)
     }
   })
 
-  app.patch('/api/canvas/blocks/:blockId', async (c) => {
+  app.patch('/api/modules/:moduleId/canvas/blocks/:blockId', async (c) => {
     const session = sessionFromHeaders(c)
     try {
       requireMinRole(session, 'member')
+      const moduleId = moduleIdForCanvas(c)
       const body = await c.req.json<{ props: Record<string, unknown> }>()
-      const canvas = loadCanvas(session.workspace.id)
+      const canvas = loadModuleCanvas(session.workspace.id, moduleId)
       const idx = canvas.blocks.findIndex((b) => b.blockId === c.req.param('blockId'))
       if (idx < 0) throw new Error('block 不存在')
       const block = canvas.blocks[idx]!
@@ -241,8 +270,101 @@ export function registerWorkspaceRoutes(app: Hono) {
         session.workspace.name,
       ).props
       canvas.blocks[idx] = { ...block, props }
-      const saved = saveCanvas(session.workspace.id, canvas)
-      logCanvasOp(session, 'canvas.edit', { blockId: block.blockId })
+      const saved = saveModuleCanvas(session.workspace.id, moduleId, canvas)
+      logCanvasOp(session, 'canvas.edit', { blockId: block.blockId, moduleId })
+      return c.json({ canvas: saved, moduleId })
+    } catch (err) {
+      return rbacJson(c, err)
+    }
+  })
+
+  app.delete('/api/modules/:moduleId/canvas/blocks/:blockId', (c) => {
+    const session = sessionFromHeaders(c)
+    try {
+      requireMinRole(session, 'member')
+      const moduleId = moduleIdForCanvas(c)
+      const canvas = loadModuleCanvas(session.workspace.id, moduleId)
+      canvas.blocks = canvas.blocks.filter((b) => b.blockId !== c.req.param('blockId'))
+      const saved = saveModuleCanvas(session.workspace.id, moduleId, canvas)
+      logCanvasOp(session, 'canvas.delete', { blockId: c.req.param('blockId'), moduleId })
+      return c.json({ canvas: saved, moduleId })
+    } catch (err) {
+      return rbacJson(c, err)
+    }
+  })
+
+  app.get('/api/canvas', (c) => {
+    const session = sessionFromHeaders(c)
+    requireMinRole(session, 'viewer')
+    const moduleId = resolveModuleIdFromRequest(null, c.req.header('x-module-id'))
+    const canvas = loadModuleCanvas(session.workspace.id, moduleId)
+    const manifest = loadManifest(session.workspace.id, session.workspace.name)
+    return c.json({ canvas, mergeMode: manifest.canvasMergeMode, moduleId })
+  })
+
+  app.put('/api/canvas', async (c) => {
+    const session = sessionFromHeaders(c)
+    try {
+      requireMinRole(session, 'member')
+      const moduleId = resolveModuleIdFromRequest(null, c.req.header('x-module-id'))
+      const body = await c.req.json<{ canvas: StoredCanvas; revision?: number }>()
+      const saved = saveModuleCanvas(session.workspace.id, moduleId, body.canvas, body.revision)
+      logCanvasOp(session, 'canvas.edit', { moduleId })
+      return c.json({ canvas: saved, moduleId })
+    } catch (err) {
+      return rbacJson(c, err)
+    }
+  })
+
+  app.post('/api/canvas/blocks', async (c) => {
+    const session = sessionFromHeaders(c)
+    try {
+      requireMinRole(session, 'member')
+      const moduleId = resolveModuleIdFromRequest(null, c.req.header('x-module-id'))
+      const body = await c.req.json<{ templateId: string; props?: Record<string, unknown> }>()
+      const tpl = BLOCK_TEMPLATES.find((t) => t.id === body.templateId)
+      if (!tpl) throw new Error('未知模板')
+      const props = validateBlockProps(
+        tpl.component,
+        { ...tpl.defaultProps, ...body.props },
+        session.workspace.id,
+        session.workspace.name,
+      ).props
+      const canvas = loadModuleCanvas(session.workspace.id, moduleId)
+      const block = {
+        type: 'block' as const,
+        component: tpl.component,
+        blockId: `user-${randomUUID().slice(0, 8)}`,
+        props,
+      }
+      canvas.blocks.push(block)
+      const saved = saveModuleCanvas(session.workspace.id, moduleId, canvas)
+      logCanvasOp(session, 'canvas.add', { blockId: block.blockId, templateId: body.templateId, moduleId })
+      return c.json({ canvas: saved, blockId: block.blockId })
+    } catch (err) {
+      return rbacJson(c, err)
+    }
+  })
+
+  app.patch('/api/canvas/blocks/:blockId', async (c) => {
+    const session = sessionFromHeaders(c)
+    try {
+      requireMinRole(session, 'member')
+      const moduleId = resolveModuleIdFromRequest(null, c.req.header('x-module-id'))
+      const body = await c.req.json<{ props: Record<string, unknown> }>()
+      const canvas = loadModuleCanvas(session.workspace.id, moduleId)
+      const idx = canvas.blocks.findIndex((b) => b.blockId === c.req.param('blockId'))
+      if (idx < 0) throw new Error('block 不存在')
+      const block = canvas.blocks[idx]!
+      const props = validateBlockProps(
+        block.component,
+        { ...block.props, ...body.props },
+        session.workspace.id,
+        session.workspace.name,
+      ).props
+      canvas.blocks[idx] = { ...block, props }
+      const saved = saveModuleCanvas(session.workspace.id, moduleId, canvas)
+      logCanvasOp(session, 'canvas.edit', { blockId: block.blockId, moduleId })
       return c.json({ canvas: saved })
     } catch (err) {
       return rbacJson(c, err)
@@ -253,10 +375,11 @@ export function registerWorkspaceRoutes(app: Hono) {
     const session = sessionFromHeaders(c)
     try {
       requireMinRole(session, 'member')
-      const canvas = loadCanvas(session.workspace.id)
+      const moduleId = resolveModuleIdFromRequest(null, c.req.header('x-module-id'))
+      const canvas = loadModuleCanvas(session.workspace.id, moduleId)
       canvas.blocks = canvas.blocks.filter((b) => b.blockId !== c.req.param('blockId'))
-      const saved = saveCanvas(session.workspace.id, canvas)
-      logCanvasOp(session, 'canvas.delete', { blockId: c.req.param('blockId') })
+      const saved = saveModuleCanvas(session.workspace.id, moduleId, canvas)
+      logCanvasOp(session, 'canvas.delete', { blockId: c.req.param('blockId'), moduleId })
       return c.json({ canvas: saved })
     } catch (err) {
       return rbacJson(c, err)

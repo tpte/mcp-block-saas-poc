@@ -1,6 +1,7 @@
 import { MCP_TOOL_NAMES } from '../mcp/handlers.ts'
 import { buildMcpCatalog } from '../mcp/catalog.ts'
 import type { DataSourceRecord, WorkspaceManifest } from '../../shared/workspaceManifest.ts'
+import { listWorkspaceModules } from '../workspaces/moduleRegistry.ts'
 import { listBuilderSkills } from './registry.ts'
 import { describeDataSourceForUser } from '../datasource/builtin.ts'
 import { probeAllDataSources } from '../workspaces/datasource.ts'
@@ -44,6 +45,7 @@ export async function analyzeSetupContextAsync(manifest: WorkspaceManifest, work
 
 export function analyzeSetupContext(manifest: WorkspaceManifest): SetupContext {
   const enabled = manifest.modules.enabledCatalogIds ?? []
+  const moduleInstances = listWorkspaceModules(manifest)
   const gaps: string[] = []
   const suggestedSkillIds: string[] = ['workspace-build']
 
@@ -51,8 +53,8 @@ export function analyzeSetupContext(manifest: WorkspaceManifest): SetupContext {
     gaps.push('尚未設定資料源（資料庫／API）；模組目前多為示範資料')
     suggestedSkillIds.push('data-source')
   }
-  if (enabled.length < 3) {
-    gaps.push('啟用的模組較少，側欄可能偏空')
+  if (moduleInstances.length < 2) {
+    gaps.push('Workspace MODULE（MCP）較少，側欄可能偏空')
     suggestedSkillIds.push('modules-enable')
   }
   if (!gaps.length) {
@@ -66,7 +68,7 @@ export function analyzeSetupContext(manifest: WorkspaceManifest): SetupContext {
 
   return {
     displayName: manifest.displayName,
-    enabledModuleCount: enabled.length,
+    enabledModuleCount: moduleInstances.length,
     dataSourceCount: manifest.dataSources.length,
     gaps,
     suggestedSkillIds: [...new Set(suggestedSkillIds)],

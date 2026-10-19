@@ -6,6 +6,7 @@ import type { CanvasPage } from '../types/ui.ts'
 import type { PlatformConfig } from '../../shared/platform.ts'
 import type { OpFeedbackRating, OpLogEntry, OpLogSummary } from '../../shared/opsLog.ts'
 import type { ToolTraceEntry } from '../../shared/trace.ts'
+import type { WorkspaceModule } from '../../shared/modulePage.ts'
 import { loadClientSession, sessionHeaders, type ClientSession } from '../session/apiHeaders.ts'
 import type { McpUiResponse } from '../types/ui.ts'
 
@@ -173,8 +174,9 @@ export async function fetchSuggestions(input: {
   return res.json()
 }
 
-export async function fetchMcpCatalog(): Promise<{ items: CatalogItem[] }> {
-  const res = await apiFetch('/api/mcp/catalog')
+export async function fetchMcpCatalog(moduleId?: string): Promise<{ items: CatalogItem[] }> {
+  const q = moduleId ? `?moduleId=${encodeURIComponent(moduleId)}` : ''
+  const res = await apiFetch(`/api/mcp/catalog${q}`)
   if (!res.ok) throw new Error('catalog failed')
   return res.json()
 }
@@ -304,14 +306,26 @@ export async function fetchBlockTemplates(): Promise<{ templates: BlockTemplate[
 
 export type StoredCanvas = CanvasPage & { revision: number }
 
-export async function fetchCanvas(): Promise<{ canvas: StoredCanvas; mergeMode: 'merge' | 'replace' }> {
-  const res = await apiFetch('/api/canvas')
+export async function fetchWorkspaceModules(): Promise<{ modules: WorkspaceModule[] }> {
+  const res = await apiFetch('/api/modules')
+  await assertOk(res)
+  return res.json()
+}
+
+export async function fetchCanvas(moduleId?: string): Promise<{ canvas: StoredCanvas; mergeMode: 'merge' | 'replace' }> {
+  const path = moduleId
+    ? `/api/modules/${encodeURIComponent(moduleId)}/canvas`
+    : '/api/canvas'
+  const res = await apiFetch(path)
   if (!res.ok) throw new Error('canvas failed')
   return res.json()
 }
 
-export async function saveCanvasApi(canvas: StoredCanvas, revision?: number) {
-  const res = await apiFetch('/api/canvas', {
+export async function saveCanvasApi(canvas: StoredCanvas, revision?: number, moduleId?: string) {
+  const path = moduleId
+    ? `/api/modules/${encodeURIComponent(moduleId)}/canvas`
+    : '/api/canvas'
+  const res = await apiFetch(path, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ canvas, revision }),
@@ -320,8 +334,20 @@ export async function saveCanvasApi(canvas: StoredCanvas, revision?: number) {
   return res.json() as Promise<{ canvas: StoredCanvas }>
 }
 
-export async function addCanvasBlock(templateId: string, props?: Record<string, unknown>) {
-  const res = await apiFetch('/api/canvas/blocks', {
+function canvasBlocksPath(moduleId?: string) {
+  return moduleId
+    ? `/api/modules/${encodeURIComponent(moduleId)}/canvas/blocks`
+    : '/api/canvas/blocks'
+}
+
+function canvasBlockPath(blockId: string, moduleId?: string) {
+  return moduleId
+    ? `/api/modules/${encodeURIComponent(moduleId)}/canvas/blocks/${encodeURIComponent(blockId)}`
+    : `/api/canvas/blocks/${encodeURIComponent(blockId)}`
+}
+
+export async function addCanvasBlock(templateId: string, props?: Record<string, unknown>, moduleId?: string) {
+  const res = await apiFetch(canvasBlocksPath(moduleId), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ templateId, props }),
@@ -330,8 +356,8 @@ export async function addCanvasBlock(templateId: string, props?: Record<string, 
   return res.json() as Promise<{ canvas: StoredCanvas; blockId: string }>
 }
 
-export async function patchCanvasBlock(blockId: string, props: Record<string, unknown>) {
-  const res = await apiFetch(`/api/canvas/blocks/${blockId}`, {
+export async function patchCanvasBlock(blockId: string, props: Record<string, unknown>, moduleId?: string) {
+  const res = await apiFetch(canvasBlockPath(blockId, moduleId), {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ props }),
@@ -340,8 +366,8 @@ export async function patchCanvasBlock(blockId: string, props: Record<string, un
   return res.json() as Promise<{ canvas: StoredCanvas }>
 }
 
-export async function deleteCanvasBlock(blockId: string) {
-  const res = await apiFetch(`/api/canvas/blocks/${blockId}`, { method: 'DELETE' })
+export async function deleteCanvasBlock(blockId: string, moduleId?: string) {
+  const res = await apiFetch(canvasBlockPath(blockId, moduleId), { method: 'DELETE' })
   await assertOk(res)
   return res.json() as Promise<{ canvas: StoredCanvas }>
 }

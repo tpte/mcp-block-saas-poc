@@ -1,6 +1,8 @@
 import { toCanvas } from '../../shared/ui.ts'
 import { MCP_TOOL_NAMES } from './handlers.ts'
 import { listMountedMcps } from './bridge.ts'
+import { toolsForModule } from '../workspaces/moduleRegistry.ts'
+import type { WorkspaceManifest } from '../../shared/workspaceManifest.ts'
 
 export type CatalogItem = {
   id: string
@@ -41,9 +43,17 @@ function groupFromTool(tool: string) {
   return DOMAIN_LABELS[prefix] ?? prefix
 }
 
-export function buildMcpCatalog(_workspaceId?: string, manifest?: { modules?: { enabledCatalogIds?: string[] } }): CatalogItem[] {
+export function buildMcpCatalog(
+  _workspaceId?: string,
+  manifest?: WorkspaceManifest,
+  moduleId?: string | null,
+): CatalogItem[] {
+  const allowedTools = manifest && moduleId ? new Set(toolsForModule(moduleId, manifest)) : null
   const enabled = manifest?.modules?.enabledCatalogIds
-  const items: CatalogItem[] = MCP_TOOL_NAMES.filter((tool) => !enabled || enabled.includes(tool)).map((tool) => ({
+  const items: CatalogItem[] = MCP_TOOL_NAMES.filter((tool) => {
+    if (allowedTools && !allowedTools.has(tool)) return false
+    return !enabled || enabled.includes(tool)
+  }).map((tool) => ({
     id: tool,
     label: TOOL_LABELS[tool] ?? tool,
     group: groupFromTool(tool),

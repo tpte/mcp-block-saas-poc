@@ -57,6 +57,26 @@ try {
   })
   checks.push(['preview diff', Array.isArray(preview.diff)])
 
+  const modules = await get('/api/modules')
+  checks.push(['modules list', (modules.modules?.length ?? 0) >= 2])
+
+  const modCanvas = await get('/api/modules/hr/canvas')
+  checks.push(['module canvas', modCanvas.canvas && Array.isArray(modCanvas.canvas.blocks)])
+
+  const putCanvas = await fetch(`${base}/api/modules/hr/canvas`, {
+    method: 'PUT',
+    headers: { ...headers, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      canvas: {
+        layout: 'stack',
+        blocks: modCanvas.canvas?.blocks ?? [],
+        revision: modCanvas.canvas?.revision ?? 1,
+      },
+    }),
+  })
+  const putJson = await putCanvas.json().catch(() => ({}))
+  checks.push(['module canvas save', putCanvas.ok && putJson.canvas?.revision >= 1])
+
   const failed = checks.filter(([, ok]) => !ok)
   for (const [name, ok] of checks) {
     console.log(ok ? '✓' : '✗', name)

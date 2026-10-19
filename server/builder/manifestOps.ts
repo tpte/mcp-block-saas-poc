@@ -1,5 +1,6 @@
 import type { DataSourceRecord, WorkspaceManifest } from '../../shared/workspaceManifest.ts'
 import { diffManifestLines, loadManifest, saveManifest } from '../workspaces/manifest.ts'
+import { syncInstancesFromCatalog } from '../workspaces/moduleRegistry.ts'
 import type { SessionContext } from '../../shared/domain.ts'
 import { logManifestEdit } from '../ops/record.ts'
 import { ensureWorkspaceSqlite, isBuiltinSecretRef } from '../datasource/builtin.ts'
@@ -55,9 +56,10 @@ export function appendManifestDataSource(session: SessionContext, record: DataSo
 export function setEnabledModules(session: SessionContext, enabledCatalogIds: string[]) {
   const manifest = loadManifest(session.workspace.id, session.workspace.name)
   manifest.modules.enabledCatalogIds = [...new Set(enabledCatalogIds)]
-  saveManifest(session.workspace.id, manifest)
-  logManifestEdit(session, manifest.revision)
-  return manifest
+  const synced = syncInstancesFromCatalog(manifest)
+  saveManifest(session.workspace.id, synced)
+  logManifestEdit(session, synced.revision)
+  return synced
 }
 
 export function listManifestDataSources(session: SessionContext) {
@@ -84,7 +86,7 @@ export function applyManifestPatch(manifest: WorkspaceManifest, patch: ManifestP
   if (patch.displayName?.trim()) {
     next.displayName = patch.displayName.trim().slice(0, 80)
   }
-  return next
+  return syncInstancesFromCatalog(next)
 }
 
 export function commitManifestPatch(session: SessionContext, patch: ManifestPatchInput) {

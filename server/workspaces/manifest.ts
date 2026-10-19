@@ -3,6 +3,7 @@ import { defaultPlatform, getWorkspacePlatform, setWorkspacePlatform } from '../
 import { storageGet, storagePut } from '../storage/workspaceStorage.ts'
 import type { WorkspaceManifest } from '../../shared/workspaceManifest.ts'
 import { MANIFEST_FILENAME, MANIFEST_HISTORY_DIR } from '../../shared/workspaceManifest.ts'
+import { syncInstancesFromCatalog } from './moduleRegistry.ts'
 
 export function defaultManifest(workspaceId: string, displayName: string): WorkspaceManifest {
   const platform = getWorkspacePlatform(workspaceId)
@@ -10,7 +11,10 @@ export function defaultManifest(workspaceId: string, displayName: string): Works
     version: 1,
     revision: 1,
     displayName,
-    modules: { enabledCatalogIds: [...MCP_TOOL_NAMES, 'bridge:list'] },
+    modules: {
+      enabledCatalogIds: [...MCP_TOOL_NAMES, 'bridge:list'],
+      instances: undefined,
+    },
     dataSources: [],
     ui: { platform, defaultCanvasLayout: 'stack' },
     deployments: [],
@@ -22,11 +26,11 @@ export function defaultManifest(workspaceId: string, displayName: string): Works
 export function loadManifest(workspaceId: string, displayName: string): WorkspaceManifest {
   const raw = storageGet(workspaceId, MANIFEST_FILENAME)
   if (!raw) {
-    const m = defaultManifest(workspaceId, displayName)
+    const m = syncInstancesFromCatalog(defaultManifest(workspaceId, displayName))
     saveManifest(workspaceId, m, { skipHistory: true })
     return m
   }
-  return JSON.parse(raw.toString()) as WorkspaceManifest
+  return syncInstancesFromCatalog(JSON.parse(raw.toString()) as WorkspaceManifest)
 }
 
 export function saveManifest(

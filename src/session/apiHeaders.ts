@@ -6,6 +6,8 @@ export type ClientSession = {
   userId: string
   workspaceId: string
   agentId: string
+  /** Active MODULE page; omitted on MATRIX home */
+  activeModuleId?: string
 }
 
 const DEFAULT: ClientSession = {
@@ -34,9 +36,11 @@ export function saveClientSession(session: ClientSession) {
 }
 
 export function sessionHeaders(session: ClientSession = loadClientSession()) {
-  return {
+  const headers: Record<string, string> = {
     'X-User-Id': session.userId,
     'X-Workspace-Id': session.workspaceId,
     'X-Agent-Id': session.agentId,
   }
+  if (session.activeModuleId) headers['X-Module-Id'] = session.activeModuleId
+  return headers
 }

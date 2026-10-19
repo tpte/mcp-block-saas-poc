@@ -124,7 +124,8 @@ app.post('/api/suggestions', async (c) => {
 app.get('/api/mcp/catalog', (c) => {
   const session = sessionFromHeaders(c)
   const manifest = loadManifest(session.workspace.id, session.workspace.name)
-  return c.json({ items: buildMcpCatalog(session.workspace.id, manifest) })
+  const moduleId = c.req.header('x-module-id') ?? c.req.query('moduleId')
+  return c.json({ items: buildMcpCatalog(session.workspace.id, manifest, moduleId) })
 })
 
 app.get('/api/runs/recent', (c) => {

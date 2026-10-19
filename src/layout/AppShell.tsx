@@ -26,6 +26,10 @@ type Props = {
   onDismissFlash?: () => void
   onToggleMobileNav?: () => void
   showMobileNavButton?: boolean
+  navHomeActive?: boolean
+  navStudioActive?: boolean
+  onNavHome?: () => void
+  onNavStudio?: () => void
   children: ReactNode
 }
 
@@ -49,6 +53,10 @@ export function AppShell({
   onDismissFlash,
   onToggleMobileNav,
   showMobileNavButton,
+  navHomeActive,
+  navStudioActive,
+  onNavHome,
+  onNavStudio,
   children,
 }: Props) {
   const apiUp = !offline && Boolean(health?.ok)
@@ -76,6 +84,28 @@ export function AppShell({
           <p className="hidden truncate text-xs text-[var(--muted)] sm:block">{platform.subtitle}</p>
         </div>
         <div className="-mx-1 flex max-w-full items-center gap-1.5 overflow-x-auto px-1 pb-0.5 md:mx-0 md:flex-wrap md:justify-end md:gap-2 md:overflow-visible md:pb-0">
+          {onNavHome ? (
+            <Button
+              type="button"
+              size="sm"
+              variant={navHomeActive ? 'default' : 'outline'}
+              className="text-xs"
+              onClick={onNavHome}
+            >
+              主頁
+            </Button>
+          ) : null}
+          {onNavStudio ? (
+            <Button
+              type="button"
+              size="sm"
+              variant={navStudioActive ? 'default' : 'outline'}
+              className="text-xs"
+              onClick={onNavStudio}
+            >
+              Studio
+            </Button>
+          ) : null}
           {showMobileNavButton && onToggleMobileNav ? (
             <Button type="button" size="sm" variant="outline" className="md:hidden" onClick={onToggleMobileNav}>
               模組
