@@ -77,7 +77,7 @@ export function MePage() {
                     開啟
                   </Link>
                   <Link className="text-xs text-[var(--muted)]" to={`/w/${ws.slug}/studio`}>
-                    調整
+                    進階調整
                   </Link>
                 </span>
               </li>

@@ -1,6 +1,6 @@
 export type TurnLane = 'chat' | 'lookup' | 'data' | 'build'
 
-const BUILD = /資料源|後台|模組|畫布|manifest|模板|打造|啟用|客製|skill/i
+const BUILD = /資料源|後台|模組|畫布|manifest|模板|打造|啟用|客製|skill|studio|調整這個工作區/i
 const LOOKUP = /搜尋|搜一下|查一下|上網|網路上|最新|新聞|天氣|股價|匯率|是誰|是什麼|什麼是|查詢/
 
 export function classifyTurn(text: string): TurnLane {
@@ -41,6 +41,12 @@ export function dataReply(tool: string) {
 /** 不需模型的短答。回 null 表示仍要走對話模型。 */
 export function localAnswer(text: string): string | null {
   const t = text.trim()
+  if (/^(早|早安|你好|嗨|哈囉|hi|hello)[！!。.\s]*$/i.test(t)) return chatFallback(t)
+  if (/^(謝謝|感謝|多謝)[！!。.\s]*$/.test(t)) return chatFallback(t)
+  if (/^(晚安|掰|再見)[！!。.\s]*$/.test(t)) return chatFallback(t)
+  if (/接上.*(資料|公司)|公司資料|設定資料源|還缺什麼|先客製/.test(t)) {
+    return '想看現成資料，直接說「看這個月的請假」或「本週現金流」。要接自己的資料庫，到「我」打開這個工作區的調整。'
+  }
   if (/^(現在幾點|現在時間|今天幾號|今天日期)[？?。!！\s]*$/.test(t)) {
     return `現在是${new Intl.DateTimeFormat('zh-TW', {
       dateStyle: 'full',

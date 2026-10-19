@@ -9,7 +9,6 @@ import {
 } from '../../shared/platform.ts'
 import { getWorkspacePlatform, setWorkspacePlatform } from '../db/store.ts'
 import { getSession } from '../requestContext.ts'
-import { builderSuggestionPrompts } from '../builder/suggestions.ts'
 
 export type { PlatformConfig }
 
@@ -122,26 +121,18 @@ function normalizeChord(raw: string) {
 export function predictPrompts(): string[] {
   const config = getPlatform()
   if (!config.suggestionsEnabled) return []
-  let builderFirst: string[] = []
-  try {
-    builderFirst = builderSuggestionPrompts()
-  } catch {
-    builderFirst = []
-  }
   const pools: Record<string, string[]> = {
-    builder: ['先幫我接上公司資料', '看這個月的請假', '改成深色'],
     home: ['看這個月的請假', '本週現金流', '改成深色'],
-    hr: ['核准超過 3 天的請假', '顯示本月財務現金流', '改成深色模式', '關閉左側模組列', '把對話框加寬', '畫布改成全寬'],
-    finance: ['列出待付發票', '給我看業務 pipeline 看板', '開啟頂部 pill', '畫布改成全寬', '改成深色模式', '關掉預測提示'],
-    sales: ['本週有哪些待簽約？', '哪些 SKU 庫存偏低？', '標題改成北極星工作台', '關掉預測提示', '改成淺色模式', '對話框移到底部'],
-    inventory: ['補貨危急 SKU', '列出未結案客服工單', '改成淺色模式', '排版置中', '顯示本月財務現金流', '預測改成 5 個'],
-    support: ['今天客服處理紀錄', '本週 KPI 與轉換率', '對話框移到底部', '顯示模型', '改成深色模式', '畫布改成全寬'],
-    analytics: ['渠道流量占比', '顯示本月財務現金流', '打開預測', '提示文字改成問我任何資料', '把對話框移到上方', '改成深色模式'],
-    bridge: ['列出已掛載的外部 MCP', '讀取 notes 記事', '顯示本月財務現金流', '改成深色模式', '預測改成 5 個', '把對話框移到上方'],
+    hr: ['核准超過 3 天的請假', '本週現金流', '改成深色'],
+    finance: ['列出待付發票', '看這個月的請假', '改成深色'],
+    sales: ['本週有哪些待簽約？', '哪些庫存偏低？', '改成深色'],
+    inventory: ['哪些庫存偏低？', '列出未結案客服工單', '改成深色'],
+    support: ['今天客服處理紀錄', '本週現金流', '改成深色'],
+    analytics: ['看本週報表', '本週現金流', '改成深色'],
+    bridge: ['讀取記事', '看這個月的請假', '改成深色'],
   }
   const list = pools[lastTopic] ?? pools.home
-  const merged = [...builderFirst, ...list.filter((p) => !builderFirst.includes(p))]
-  return merged.slice(0, config.suggestionCount)
+  return list.slice(0, config.suggestionCount)
 }
 
 export function topicFromMessage(text: string) {

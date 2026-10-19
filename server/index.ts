@@ -330,7 +330,7 @@ app.post('/api/agent/chat', async (c) => {
         return
       }
 
-      const explained = explainCapability(text)
+      const explained = isConversational(text) ? null : explainCapability(text)
       if (explained) {
         await status('這題在問已掛載的 MCP，直接讀工具清單')
         const turn = finalizeTurn(text, explained)

@@ -72,7 +72,13 @@ const PLAIN_SUGGESTIONS = ['看這個月的請假', '本週現金流', '改成�
 function plainSuggestions(list: string[], count: number) {
   const clean = list
     .map((text) => text.trim())
-    .filter((text) => text && !/skill|manifest|\bMCP\b|模組|read_skill|tool trace|命令盤/i.test(text))
+    .filter(
+      (text) =>
+        text &&
+        !/skill|manifest|\bMCP\b|模組|read_skill|tool trace|命令盤|接上.*(資料|公司)|還缺什麼|設定資料源/i.test(
+          text,
+        ),
+    )
   const picked = (clean.length ? clean : PLAIN_SUGGESTIONS).slice(0, count)
   return picked.length ? picked : PLAIN_SUGGESTIONS.slice(0, count)
 }
