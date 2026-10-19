@@ -41,6 +41,13 @@ export type TabItem = {
   blocks: UiBlock[]
 }
 
+export type BlockPresentation = {
+  priority?: number
+  role?: 'summary' | 'detail' | 'action' | 'context'
+  emphasis?: 'primary' | 'secondary'
+  collapsible?: boolean
+}
+
 export type BlockProps = {
   title?: string
   description?: string
@@ -69,6 +76,7 @@ export type UiBlock = {
   component: string
   blockId: string
   props: BlockProps
+  presentation?: BlockPresentation
 }
 
 export type CanvasLayout = 'stack' | 'grid' | 'hero'

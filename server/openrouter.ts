@@ -7,7 +7,18 @@ import {
 } from './env.ts'
 import { MCP_TOOL_NAMES } from './mcp/handlers.ts'
 import { mergeUi, speechToBlocks } from './mcp/compose.ts'
-import { BRIDGE_CALL, BRIDGE_LIST, COMPOSE_TOOL, dispatchTool, PLATFORM_TOOL } from './mcp/turn.ts'
+import { filterToolsForAgent } from './agents/policy.ts'
+import { getAgent } from './db/store.ts'
+import { getSession } from './requestContext.ts'
+import {
+  AGENT_DELEGATE,
+  BRIDGE_CALL,
+  BRIDGE_LIST,
+  COMPOSE_TOOL,
+  dispatchToolWithTrace,
+  PLATFORM_TOOL,
+} from './mcp/turn.ts'
+import type { ToolTraceEntry } from '../shared/trace.ts'
 
 export type ChatMessage = {
   role: 'system' | 'user' | 'assistant' | 'tool'
@@ -86,6 +97,21 @@ const toolDefs = [
   {
     type: 'function' as const,
     function: {
+      name: AGENT_DELEGATE,
+      description: 'Delegate a task to another agent in this workspace (orchestrator only).',
+      parameters: {
+        type: 'object',
+        properties: {
+          targetAgentId: { type: 'string' },
+          task: { type: 'string' },
+        },
+        required: ['targetAgentId', 'task'],
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
       name: PLATFORM_TOOL,
       description:
         'MCP that customizes the shell itself: theme, composer position/width/placeholder, next-prompt count, header, canvas width. Does not replace canvas data.',
@@ -104,6 +130,18 @@ const toolDefs = [
           canvasMaxWidth: { type: 'string', enum: ['md', 'xl', 'full'] },
           density: { type: 'string', enum: ['comfortable', 'compact'] },
           showModelBadge: { type: 'boolean' },
+          moduleSidebarEnabled: { type: 'boolean' },
+          modulePillsEnabled: { type: 'boolean' },
+          commandPaletteEnabled: { type: 'boolean' },
+          showToolTrace: { type: 'boolean' },
+          layoutPreferences: {
+            type: 'object',
+            properties: {
+              blockSort: { type: 'string', enum: ['agent', 'importance', 'type'] },
+              defaultCanvasLayout: { type: 'string', enum: ['stack', 'grid', 'hero'] },
+              emphasis: { type: 'string', enum: ['summary-first', 'actions-first'] },
+            },
+          },
         },
       },
     },
@@ -114,14 +152,22 @@ type ProviderPref =
   | { only: string[]; allow_fallbacks: boolean }
   | { order: string[]; allow_fallbacks: boolean }
 
-async function complete(key: string, messages: ChatMessage[], provider: ProviderPref) {
+async function complete(
+  key: string,
+  messages: ChatMessage[],
+  provider: ProviderPref,
+  tools: typeof toolDefs,
+  systemExtra: string,
+) {
   const system: ChatMessage = {
     role: 'system',
-    content: `你是 Super MCP 超級 Agent。使用者看得到的每句話都必須經 ${COMPOSE_TOOL} 畫在畫布上，不要只回純文字。
+    content: `${systemExtra}
+你是 MATRIX 超級 Agent（個人 MCP 駕駛艙；與 HIYEN MATRIX 無關）。使用者看得到的每句話都必須經 ${COMPOSE_TOOL} 畫在畫布上，不要只回純文字。
 blocks.kind 只能是 title、points、chart、confirm、diff、document、plan。
 一般對話一定要有 title，加上至少 3 個 points，每點寫完整一句，不要只回標題或一個詞。問某個 MCP 能做什麼時，先講它的 tools 與限制，再給 confirm。要圖用 chart，要按鈕用 confirm，比對用 diff，長文用 document，步驟用 plan。
 需要資料時再呼叫：${MCP_TOOL_NAMES.join(', ')}。改外殼用 ${PLATFORM_TOOL}。外部 MCP 用 ${BRIDGE_LIST} / ${BRIDGE_CALL}。
-可同時呼叫資料 tool 與 ${COMPOSE_TOOL}。繁中。不要輸出 HTML。`,
+可同時呼叫資料 tool 與 ${COMPOSE_TOOL}。compose 的 blocks 依使用者問題決定種類與順序（先給最該先懂的一塊），可附 priority／role／collapsible。勿機械固定 alert→table。
+繁中。不要輸出 HTML。`,
   }
 
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -130,12 +176,12 @@ blocks.kind 只能是 title、points、chart、confirm、diff、document、plan�
       Authorization: `Bearer ${key}`,
       'Content-Type': 'application/json',
       'HTTP-Referer': getSiteUrl(),
-      'X-Title': 'MCP Block SaaS MVP',
+      'X-Title': 'MATRIX MCP Cockpit',
     },
     body: JSON.stringify({
       model: getOpenRouterModel(),
       messages: [system, ...messages.filter((m) => m.role !== 'system')],
-      tools: toolDefs,
+      tools,
       tool_choice: 'auto',
       temperature: 0.2,
       provider,
@@ -171,9 +217,14 @@ function retryable(err: unknown) {
   return status === 429 || status === 502 || status === 503 || status === 529
 }
 
-export async function runOpenRouterAgent(messages: ChatMessage[]) {
+export async function runOpenRouterAgent(messages: ChatMessage[], agentId?: string) {
   const key = getOpenRouterKey()
   if (!key) throw new Error('OPENROUTER_API_KEY missing')
+
+  const activeId = agentId ?? getSession().activeAgentId
+  const agent = getAgent(activeId)
+  const tools = filterToolsForAgent(toolDefs, activeId)
+  const systemExtra = agent ? `${agent.systemPrompt}\nAgent: ${agent.name} (${agent.kind}).\n` : ''
 
   const pinned = getProviderOnly()
   const attempts: ProviderPref[] = [
@@ -185,7 +236,7 @@ export async function runOpenRouterAgent(messages: ChatMessage[]) {
   let lastError: unknown
   for (const provider of attempts) {
     try {
-      data = await complete(key, messages, provider)
+      data = await complete(key, messages, provider, tools, systemExtra)
       break
     } catch (err) {
       lastError = err
@@ -197,8 +248,10 @@ export async function runOpenRouterAgent(messages: ChatMessage[]) {
   const message = data.choices?.[0]?.message
   if (!message) throw new Error('OpenRouter empty response')
 
-  let ui = null as ReturnType<typeof dispatchTool>['ui']
+  let ui = null as ReturnType<typeof dispatchToolWithTrace>['ui']
+  const trace: ToolTraceEntry[] = []
   let composed = false
+  const provider = data.provider ?? null
   for (const call of message.tool_calls ?? []) {
     let payload: Record<string, unknown> | undefined
     try {
@@ -207,7 +260,12 @@ export async function runOpenRouterAgent(messages: ChatMessage[]) {
       payload = undefined
     }
     if (call.function.name === COMPOSE_TOOL) composed = true
-    const result = dispatchTool(call.function.name, payload)
+    const result = await dispatchToolWithTrace(call.function.name, payload, {
+      source: 'chat',
+      mode: 'openrouter',
+      provider,
+    })
+    trace.push(...result.trace)
     ui = mergeUi(ui, result.ui)
   }
   if (!composed && message.content?.trim()) ui = mergeUi(speechToBlocks(message.content), ui)
@@ -215,7 +273,8 @@ export async function runOpenRouterAgent(messages: ChatMessage[]) {
   return {
     assistantMessage: message.content?.trim() || (ui ? '已為你更新工作畫面。' : '請再描述一下需求。'),
     ui,
-    provider: data.provider ?? null,
+    trace,
+    provider,
     model: getOpenRouterModel(),
   }
 }

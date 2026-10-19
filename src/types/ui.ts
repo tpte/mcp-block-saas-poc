@@ -1,5 +1,6 @@
 export type {
   BlockAction,
+  BlockPresentation,
   BlockProps,
   CanvasLayout,
   CanvasPage,

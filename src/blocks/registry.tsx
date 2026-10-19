@@ -9,6 +9,7 @@ import { ConfirmBlock } from './ConfirmBlock'
 import { DiffBlock } from './DiffBlock'
 import { DocumentBlock } from './DocumentBlock'
 import { KeyPointsBlock } from './KeyPointsBlock'
+import { PackageBlock } from './PackageBlock'
 import { PlanBlock } from './PlanBlock'
 import { StatsCardBlock } from './StatsCardBlock'
 import { TabsBlock } from './TabsBlock'
@@ -32,6 +33,7 @@ const BLOCK_MAP: Record<string, ComponentType<BlockProps & { onAction?: (a: Bloc
   ShadcnDiffBlock: DiffBlock,
   ShadcnDocumentBlock: DocumentBlock,
   ShadcnPlanBlock: PlanBlock,
+  ShadcnPackageBlock: PackageBlock,
 }
 
 export function renderBlock(block: UiBlock, onAction?: (action: BlockAction) => void) {

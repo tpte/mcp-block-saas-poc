@@ -1,0 +1,42 @@
+# Push to main → build 通過後部署 MATRIX 到 Railway（matrix-mcp）
+name: Deploy Railway
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+concurrency:
+  group: railway-production
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      # matrix-mcp @ Alan's Projects（可改為 repo Variable 覆寫）
+      RAILWAY_PROJECT_ID: bad4882b-5778-413e-b43b-7b7a2d9d2249
+      RAILWAY_SERVICE_ID: 4f2f3df4-ca00-4fc6-a850-b1e9ebc233e4
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli@4.12.0
+      - name: Deploy to Railway
+        run: railway up --detach --service "$RAILWAY_SERVICE_ID"
+      - name: Deployment URL
+        run: echo "Production https://matrix-mcp-production.up.railway.app"

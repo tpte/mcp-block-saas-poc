@@ -38,5 +38,29 @@ export function allowProviderFallbacks() {
 }
 
 export function getSiteUrl() {
-  return process.env.OPENROUTER_SITE_URL?.trim() || 'http://localhost:5173'
+  const explicit = process.env.OPENROUTER_SITE_URL?.trim()
+  if (explicit) return explicit
+  const railway = process.env.RAILWAY_PUBLIC_DOMAIN?.trim()
+  if (railway) return `https://${railway}`
+  return 'http://localhost:5173'
+}
+
+export type StdioServerConfig = {
+  name: string
+  command: string
+  args?: string[]
+  env?: Record<string, string>
+}
+
+export function getStdioServerConfigs(): StdioServerConfig[] {
+  const raw = process.env.MCP_STDIO_SERVERS?.trim()
+  if (!raw) return []
+  try {
+    const parsed = JSON.parse(raw) as StdioServerConfig[]
+    if (!Array.isArray(parsed)) return []
+    return parsed.filter((item) => item?.name && item?.command)
+  } catch {
+    console.warn('MCP_STDIO_SERVERS JSON 無法解析，已略過')
+    return []
+  }
 }

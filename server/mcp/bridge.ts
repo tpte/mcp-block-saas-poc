@@ -81,13 +81,17 @@ export function listMountedMcps(): McpUiResponse {
   }
 }
 
-export function callMountedMcp(serverName: string, tool: string, args: Record<string, unknown> = {}): McpUiResponse {
+export async function callMountedMcp(
+  serverName: string,
+  tool: string,
+  args: Record<string, unknown> = {},
+): Promise<McpUiResponse> {
   const server = mounts.get(serverName)
   if (!server) {
     return alertBlock(`找不到外部 MCP：${serverName}`)
   }
   try {
-    const raw = server.callTool(tool, args)
+    const raw = await Promise.resolve(server.callTool(tool, args))
     return { action: 'RENDER', ui: adaptToBlock(serverName, tool, raw) }
   } catch (err) {
     return alertBlock(err instanceof Error ? err.message : '外部 MCP 呼叫失敗')

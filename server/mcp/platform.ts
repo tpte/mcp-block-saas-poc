@@ -1,33 +1,42 @@
-import type { PlatformConfig } from '../../shared/platform.ts'
+import {
+  DEFAULT_KEYBOARD_SHORTCUTS,
+  DEFAULT_LAYOUT_PREFERENCES,
+  mergeKeyboardShortcuts,
+  type KeyboardAction,
+  type KeyboardShortcuts,
+  type LayoutPreferences,
+  type PlatformConfig,
+} from '../../shared/platform.ts'
+import { getWorkspacePlatform, setWorkspacePlatform } from '../db/store.ts'
+import { getSession } from '../requestContext.ts'
 
 export type { PlatformConfig }
 
-const defaults = (): PlatformConfig => ({
-  theme: 'light',
-  composerPosition: 'bottom',
-  composerWidth: 'narrow',
-  placeholder: '跟 Agent 說你想看什麼…',
-  showHistory: true,
-  suggestionsEnabled: true,
-  suggestionCount: 3,
-  title: 'Super MCP',
-  subtitle: '任何 MCP，即時渲染成畫面',
-  canvasMaxWidth: 'xl',
-  density: 'comfortable',
-  showModelBadge: true,
-})
-
-let config = defaults()
 let lastTopic = 'home'
 
 export function getPlatform(): PlatformConfig {
-  return { ...config }
+  const { workspace } = getSession()
+  const config = getWorkspacePlatform(workspace.id)
+  return {
+    ...config,
+    keyboardShortcuts: { ...config.keyboardShortcuts },
+    layoutPreferences: { ...config.layoutPreferences },
+  }
 }
 
 export function applyPlatformPatch(patch: Partial<PlatformConfig>) {
-  const next = { ...config, ...sanitize(patch) }
+  const { workspace } = getSession()
+  const config = getWorkspacePlatform(workspace.id)
+  const sanitized = sanitize(patch)
+  const next: PlatformConfig = { ...config, ...sanitized }
+  if (sanitized.layoutPreferences) {
+    next.layoutPreferences = { ...config.layoutPreferences, ...sanitized.layoutPreferences }
+  }
+  if (sanitized.keyboardShortcuts) {
+    next.keyboardShortcuts = { ...config.keyboardShortcuts, ...sanitized.keyboardShortcuts }
+  }
   next.suggestionCount = clampCount(next.suggestionCount)
-  config = next
+  setWorkspacePlatform(workspace.id, next)
   return getPlatform()
 }
 
@@ -70,15 +79,52 @@ export function interpretPlatform(raw: string): Partial<PlatformConfig> | null {
   if (/顯示模型/.test(text)) patch.showModelBadge = true
   if (/隱藏對話紀錄|不要顯示對話/.test(text)) patch.showHistory = false
   if (/顯示對話紀錄/.test(text)) patch.showHistory = true
+
+  if (/開啟左側模組|打開 sidebar|顯示模組列|開啟 sidebar/.test(text)) patch.moduleSidebarEnabled = true
+  if (/關閉左側模組|關掉 sidebar|隱藏模組列/.test(text)) patch.moduleSidebarEnabled = false
+  if (/開啟頂部 pill|顯示 pill|打開 pill/.test(text)) patch.modulePillsEnabled = true
+  if (/關閉頂部 pill|關掉 pill|隱藏 pill/.test(text)) patch.modulePillsEnabled = false
+  if (/開啟命令盤|打開命令盤|開啟 ⌘k|開啟 cmd\+k/.test(text)) patch.commandPaletteEnabled = true
+  if (/關閉命令盤|關掉 ⌘k|不要命令盤/.test(text)) patch.commandPaletteEnabled = false
+  if (/顯示 tool trace|打開除錯面板|顯示除錯/.test(text)) patch.showToolTrace = true
+  if (/隱藏 tool trace|關掉除錯面板|不要除錯面板/.test(text)) patch.showToolTrace = false
+
+  const layoutPatch: Partial<LayoutPreferences> = {}
+  if (/block 排序.*agent|保持 agent 順序/.test(text)) layoutPatch.blockSort = 'agent'
+  if (/block 排序.*importance|重要的在前面|優先級排序/.test(text)) layoutPatch.blockSort = 'importance'
+  if (/block 排序.*type|依類型排序/.test(text)) layoutPatch.blockSort = 'type'
+  if (/預設.*grid|畫布.*grid|grid 排版/.test(text)) layoutPatch.defaultCanvasLayout = 'grid'
+  if (/預設.*stack|直向排版/.test(text)) layoutPatch.defaultCanvasLayout = 'stack'
+  if (/先看行動|actions-first|按鈕優先/.test(text)) layoutPatch.emphasis = 'actions-first'
+  if (/先看摘要|summary-first/.test(text)) layoutPatch.emphasis = 'summary-first'
+  if (Object.keys(layoutPatch).length) patch.layoutPreferences = layoutPatch as LayoutPreferences
+
+  const shortcuts: KeyboardShortcuts = {}
+  const palette = text.match(/命令盤(?:改成|改為|換成)\s*(ctrl\+shift\+p|meta\+k|ctrl\+p|[\w+]+)/i)
+  if (palette) shortcuts.openCommandPalette = normalizeChord(palette[1])
+  const expand = text.match(/放大 block(?:改成|改為)\s*([\w+]+)/i)
+  if (expand) shortcuts.expandBlock = normalizeChord(expand[1])
+  if (Object.keys(shortcuts).length) patch.keyboardShortcuts = shortcuts
+
   return Object.keys(patch).length ? patch : null
 }
 
+function normalizeChord(raw: string) {
+  return raw
+    .split('+')
+    .map((part, i) => (i === 0 ? part.charAt(0).toUpperCase() + part.slice(1).toLowerCase() : part))
+    .join('+')
+    .replace(/^Ctrl/i, 'Meta')
+    .replace(/Cmd/i, 'Meta')
+}
+
 export function predictPrompts(): string[] {
+  const config = getPlatform()
   if (!config.suggestionsEnabled) return []
   const pools: Record<string, string[]> = {
-    home: ['幫我看這個月的員工請假狀況', '顯示本月財務現金流', '改成深色模式', '把對話框移到上方', '預測改成 5 個', '畫布改成全寬'],
-    hr: ['核准超過 3 天的請假', '顯示本月財務現金流', '改成深色模式', '預測改成 5 個', '把對話框加寬', '畫布改成全寬'],
-    finance: ['列出待付發票', '給我看業務 pipeline 看板', '把對話框加寬', '畫布改成全寬', '改成深色模式', '關掉預測提示'],
+    home: ['幫我看這個月的員工請假狀況', '顯示本月財務現金流', '改成深色模式', '⌘K 開命令盤', 'block 排序改成 importance', '隱藏 tool trace'],
+    hr: ['核准超過 3 天的請假', '顯示本月財務現金流', '改成深色模式', '關閉左側模組列', '把對話框加寬', '畫布改成全寬'],
+    finance: ['列出待付發票', '給我看業務 pipeline 看板', '開啟頂部 pill', '畫布改成全寬', '改成深色模式', '關掉預測提示'],
     sales: ['本週有哪些待簽約？', '哪些 SKU 庫存偏低？', '標題改成北極星工作台', '關掉預測提示', '改成淺色模式', '對話框移到底部'],
     inventory: ['補貨危急 SKU', '列出未結案客服工單', '改成淺色模式', '排版置中', '顯示本月財務現金流', '預測改成 5 個'],
     support: ['今天客服處理紀錄', '本週 KPI 與轉換率', '對話框移到底部', '顯示模型', '改成深色模式', '畫布改成全寬'],
@@ -112,6 +158,8 @@ export function topicFromTool(tool: string) {
   return lastTopic
 }
 
+const CHORD_RE = /^(Meta|Ctrl|Alt|Shift|\?|\/|[A-Z0-9]+|Arrow(?:Up|Down|Left|Right))(\+(Meta|Ctrl|Alt|Shift|\?|\/|[A-Z0-9]+|Arrow(?:Up|Down|Left|Right)))*$/i
+
 function sanitize(patch: Partial<PlatformConfig>): Partial<PlatformConfig> {
   const next: Partial<PlatformConfig> = {}
   if (patch.theme === 'light' || patch.theme === 'dark') next.theme = patch.theme
@@ -128,6 +176,36 @@ function sanitize(patch: Partial<PlatformConfig>): Partial<PlatformConfig> {
   }
   if (patch.density === 'comfortable' || patch.density === 'compact') next.density = patch.density
   if (typeof patch.showModelBadge === 'boolean') next.showModelBadge = patch.showModelBadge
+  if (typeof patch.moduleSidebarEnabled === 'boolean') next.moduleSidebarEnabled = patch.moduleSidebarEnabled
+  if (typeof patch.modulePillsEnabled === 'boolean') next.modulePillsEnabled = patch.modulePillsEnabled
+  if (typeof patch.commandPaletteEnabled === 'boolean') next.commandPaletteEnabled = patch.commandPaletteEnabled
+  if (typeof patch.showToolTrace === 'boolean') next.showToolTrace = patch.showToolTrace
+
+  if (patch.layoutPreferences) {
+    const lp: Partial<LayoutPreferences> = {}
+    const src = patch.layoutPreferences
+    if (src.blockSort === 'agent' || src.blockSort === 'importance' || src.blockSort === 'type') lp.blockSort = src.blockSort
+    if (src.defaultCanvasLayout === 'stack' || src.defaultCanvasLayout === 'grid' || src.defaultCanvasLayout === 'hero') {
+      lp.defaultCanvasLayout = src.defaultCanvasLayout
+    }
+    if (src.emphasis === 'summary-first' || src.emphasis === 'actions-first') lp.emphasis = src.emphasis
+    if (Object.keys(lp).length) next.layoutPreferences = lp as LayoutPreferences
+  }
+
+  if (patch.keyboardShortcuts) {
+    const ks: KeyboardShortcuts = {}
+    for (const [key, value] of Object.entries(patch.keyboardShortcuts)) {
+      if (!value || typeof value !== 'string') continue
+      if (!(key in DEFAULT_KEYBOARD_SHORTCUTS)) continue
+      if (!CHORD_RE.test(value.replace(/\s/g, ''))) {
+        console.warn(`忽略無效快捷鍵 ${key}: ${value}`)
+        continue
+      }
+      ks[key as KeyboardAction] = value
+    }
+    if (Object.keys(ks).length) next.keyboardShortcuts = ks
+  }
+
   return next
 }
 
@@ -135,3 +213,5 @@ function clampCount(n: number) {
   if (!Number.isFinite(n)) return 3
   return Math.min(6, Math.max(0, Math.round(n)))
 }
+
+export { mergeKeyboardShortcuts, DEFAULT_KEYBOARD_SHORTCUTS }

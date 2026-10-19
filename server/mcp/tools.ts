@@ -1,0 +1,5 @@
+export const PLATFORM_TOOL = 'platform:patch'
+export const BRIDGE_LIST = 'bridge:list'
+export const BRIDGE_CALL = 'bridge:call'
+export const COMPOSE_TOOL = 'canvas:compose'
+export const AGENT_DELEGATE = 'agent:delegate'

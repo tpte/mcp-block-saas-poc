@@ -1,5 +1,7 @@
-import type { McpUiResponse, UiBlock } from '../../shared/ui.ts'
+import type { BlockPresentation, McpUiResponse, UiBlock } from '../../shared/ui.ts'
 import { toCanvas } from '../../shared/ui.ts'
+import { loadPublishedBundle } from '../blocks/packages.ts'
+import { getSession } from '../requestContext.ts'
 
 type Section = {
   kind?: string
@@ -15,6 +17,13 @@ type Section = {
   after?: string
   body?: string
   steps?: { title: string; detail?: string }[]
+  presentation?: BlockPresentation
+  priority?: number
+  role?: BlockPresentation['role']
+  emphasis?: BlockPresentation['emphasis']
+  collapsible?: boolean
+  packageRef?: string
+  props?: Record<string, unknown>
 }
 
 let seq = 0
@@ -55,15 +64,40 @@ export function mergeUi(current: McpUiResponse | null, next: McpUiResponse | nul
   }
 }
 
+function presentationFrom(section: Section): BlockPresentation | undefined {
+  const p = section.presentation ?? {}
+  const merged: BlockPresentation = {
+    ...p,
+    priority: p.priority ?? section.priority,
+    role: p.role ?? section.role,
+    emphasis: p.emphasis ?? section.emphasis,
+    collapsible: p.collapsible ?? section.collapsible,
+  }
+  return Object.values(merged).some((v) => v !== undefined) ? merged : undefined
+}
+
 function sectionToBlock(section: Section): UiBlock | null {
   const id = `reply-${++seq}`
   const kind = section.kind ?? 'points'
+  const presentation = presentationFrom(section)
   if (kind === 'title') {
-    return { type: 'block', component: 'ShadcnTitleBlock', blockId: id, props: { title: section.text || section.title || '回覆' } }
+    return {
+      type: 'block',
+      component: 'ShadcnTitleBlock',
+      blockId: id,
+      props: { title: section.text || section.title || '回覆' },
+      presentation: presentation ?? { role: 'summary', priority: 8, emphasis: 'primary' },
+    }
   }
   if (kind === 'points') {
     const points = section.items || section.points || []
-    return { type: 'block', component: 'ShadcnKeyPointsBlock', blockId: id, props: { title: section.title, points } }
+    return {
+      type: 'block',
+      component: 'ShadcnKeyPointsBlock',
+      blockId: id,
+      props: { title: section.title, points },
+      presentation: presentation ?? { role: 'summary', priority: 7 },
+    }
   }
   if (kind === 'chart') {
     return {
@@ -103,6 +137,23 @@ function sectionToBlock(section: Section): UiBlock | null {
       component: 'ShadcnPlanBlock',
       blockId: id,
       props: { title: section.title || 'Plan', steps: section.steps ?? [] },
+    }
+  }
+  if (kind === 'pkg') {
+    const ref = section.packageRef ?? ''
+    const componentId = ref.startsWith('pkg:') ? ref.slice(4) : ref
+    const loaded = componentId ? loadPublishedBundle(getSession().workspace.id, componentId) : null
+    return {
+      type: 'block',
+      component: 'ShadcnPackageBlock',
+      blockId: id,
+      props: {
+        title: section.title ?? loaded?.pkg.name ?? 'Package Block',
+        packageRef: ref,
+        sandbox: loaded?.bundle ?? { template: 'fallback', body: '套件未發布或不存在' },
+        ...(section.props ?? {}),
+      },
+      presentation: presentation ?? { role: 'detail', priority: 5 },
     }
   }
   return null

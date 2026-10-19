@@ -1,8 +1,13 @@
-import { useState } from 'react'
+import { forwardRef, useImperativeHandle, useRef, useState } from 'react'
 import { Button } from '../../components/ui/button'
 import { cn } from '../../lib/utils'
 import type { PlatformConfig } from '../../mcp/client'
 import type { ChatMessage } from '../session/useAgentSession'
+
+export type ComposerHandle = {
+  focus: () => void
+  setDraft: (text: string) => void
+}
 
 type Props = {
   messages: ChatMessage[]
@@ -12,11 +17,18 @@ type Props = {
   onSend: (text: string) => void
 }
 
-export function Composer({ messages, platform, suggestions, busy, onSend }: Props) {
+export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
+  { platform, suggestions, busy, onSend },
+  ref,
+) {
   const [input, setInput] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
   const top = platform.composerPosition === 'top'
-  void messages
-  void platform.showHistory
+
+  useImperativeHandle(ref, () => ({
+    focus: () => inputRef.current?.focus(),
+    setDraft: (text: string) => setInput(text),
+  }))
 
   function submit() {
     const text = input.trim()
@@ -28,20 +40,24 @@ export function Composer({ messages, platform, suggestions, busy, onSend }: Prop
   return (
     <div
       className={cn(
-        'pointer-events-none absolute inset-x-0 z-10 px-4',
+        'pointer-events-none absolute inset-x-0 z-40 px-4',
         top ? 'top-14 bg-gradient-to-b from-[var(--bg)] via-[var(--bg)]/95 to-transparent pb-8 pt-2' : 'bottom-0 bg-gradient-to-t from-[var(--bg)] via-[var(--bg)]/95 to-transparent pb-5 pt-10',
       )}
     >
       <div className={cn('pointer-events-auto mx-auto w-full', platform.composerWidth === 'wide' ? 'max-w-4xl' : 'max-w-[720px]')}>
         {platform.suggestionsEnabled && suggestions.length > 0 ? (
           <div className="mb-2 flex flex-wrap gap-2">
-            {suggestions.map((text) => (
+            {suggestions.map((text, index) => (
               <button
-                key={text}
+                key={`${index}-${text}`}
                 type="button"
                 disabled={busy}
-                onClick={() => onSend(text)}
-                className="rounded-full border border-[var(--line)] bg-[var(--card)] px-3 py-1 text-xs text-[var(--fg)] hover:opacity-80 disabled:opacity-50"
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  onSend(text)
+                }}
+                className="cursor-pointer rounded-full border border-[var(--line)] bg-[var(--card)] px-3 py-1 text-xs text-[var(--fg)] hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {text}
               </button>
@@ -57,6 +73,7 @@ export function Composer({ messages, platform, suggestions, busy, onSend }: Prop
           }}
         >
           <input
+            ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder={platform.placeholder}
@@ -69,4 +86,4 @@ export function Composer({ messages, platform, suggestions, busy, onSend }: Prop
       </div>
     </div>
   )
-}
+})

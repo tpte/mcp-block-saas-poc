@@ -1,0 +1,50 @@
+import type { PlatformConfig } from './platform.ts'
+import type { McpMountRecord } from './domain.ts'
+import type { DefaultCanvasLayout } from './platform.ts'
+
+export type DataSourceType = 'postgres' | 'supabase' | 'sqlite' | 'http_api'
+
+export type DataSourceRecord = {
+  id: string
+  type: DataSourceType
+  label: string
+  secretRef: string
+  allowedSchemas?: string[]
+  health?: 'healthy' | 'degraded' | 'down' | 'unknown'
+}
+
+export type GitBinding = {
+  provider: 'github'
+  repo: string
+  branch: string
+  lastSyncAt?: string
+}
+
+export type DeploymentRecord = {
+  id: string
+  target: 'railway'
+  serviceId?: string
+  url?: string
+  status?: 'healthy' | 'degraded' | 'down' | 'unknown'
+}
+
+export type WorkspaceManifest = {
+  version: 1
+  revision: number
+  displayName: string
+  modules: {
+    enabledCatalogIds: string[]
+  }
+  dataSources: DataSourceRecord[]
+  ui: {
+    platform: PlatformConfig
+    defaultCanvasLayout: DefaultCanvasLayout
+  }
+  git?: GitBinding
+  deployments: DeploymentRecord[]
+  customMcpMounts: McpMountRecord[]
+  canvasMergeMode: 'merge' | 'replace'
+}
+
+export const MANIFEST_FILENAME = 'manifest.json'
+export const MANIFEST_HISTORY_DIR = 'manifest-history'

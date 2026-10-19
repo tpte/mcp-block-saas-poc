@@ -7,7 +7,7 @@ export type ExternalMcp = {
   name: string
   description: string
   listTools: () => ExternalTool[]
-  callTool: (tool: string, args: Record<string, unknown>) => unknown
+  callTool: (tool: string, args: Record<string, unknown>) => unknown | Promise<unknown>
 }
 
 const notes = [

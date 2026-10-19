@@ -54,26 +54,30 @@ export function invokeMcpTool(tool: string, _payload?: Record<string, unknown>):
         targetBlockId: 'hr-leave-table-202610',
         patch: { data: [...leaveRows] },
       }
-    case 'hr:get_leave':
+    case 'hr:get_leave': {
+      const table = leaveTable()
+      table.presentation = { priority: 10, role: 'summary', emphasis: 'primary' }
       return {
         action: 'RENDER',
         ui: {
           layout: 'stack',
           blocks: [
+            table,
             {
               type: 'block',
               component: 'ShadcnAlertBlock',
               blockId: 'hr-alert-1',
+              presentation: { priority: 3, role: 'context', collapsible: true, emphasis: 'secondary' },
               props: {
                 variant: 'warning',
                 title: 'HR 提醒',
                 description: '有 2 位員工請假超過 3 天，建議優先審核。',
               },
             },
-            leaveTable(),
           ],
         },
       }
+    }
     case 'finance:get_cashflow':
       return {
         action: 'RENDER',
@@ -348,7 +352,7 @@ export function invokeMcpTool(tool: string, _payload?: Record<string, unknown>):
   }
 }
 
-export function runKeywordAgent(message: string): McpUiResponse {
+export async function runKeywordAgent(message: string): Promise<McpUiResponse> {
   const text = message
     .replace(/[\uFF01-\uFF5E]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0xfee0))
     .toLowerCase()
@@ -374,7 +378,7 @@ export function runKeywordAgent(message: string): McpUiResponse {
   if (explained) return explained
   if (text.includes('外部') || text.includes('掛載') || text.includes('bridge') || text.includes('筆記') || text.includes('notes')) {
     return text.includes('讀') || text.includes('記事') || text.includes('notes')
-      ? callMountedMcp('notes', 'notes:list')
+      ? await callMountedMcp('notes', 'notes:list')
       : listMountedMcps()
   }
   return speechToBlocks('我在。直接說你想看的資料，或要我開文檔、對一段 Diff、進入 Plan。')
