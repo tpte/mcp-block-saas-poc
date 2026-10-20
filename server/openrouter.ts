@@ -1,5 +1,6 @@
 import {
   allowProviderFallbacks,
+  getFallbackModels,
   getOpenRouterKey,
   getOpenRouterModel,
   getProviderOnly,
@@ -232,6 +233,9 @@ const toolDefs = [
 type ProviderPref =
   | { only: string[]; allow_fallbacks: boolean }
   | { order: string[]; allow_fallbacks: boolean }
+  | { allow_fallbacks: boolean }
+
+type Attempt = { provider: ProviderPref; models: string[] }
 
 function systemFor(lane: TurnLane, systemExtra: string, evidence?: string) {
   if (lane === 'chat') {
@@ -252,7 +256,7 @@ ${evidence ? `\n參考資料：\n${evidence}` : ''}`
   }
   return `${systemExtra}
 使用者要看一份工作區資料。優先呼叫對應的 hr:、finance:、support:、analytics: 等資料工具（勿只用文字回答），再用 ${COMPOSE_TOOL} 畫上畫面。
-需要開啟 Studio 或 SPACE 時可呼叫 workspace:navigate。
+需要開啟工作區設定（工作台／打造後台）或回到工作區時可呼叫 workspace:navigate。
 不要提 Skill、資料源或打造後台，不要一次呼叫多個報表。
 繁中，不要用 markdown。`
 }
@@ -260,7 +264,7 @@ ${evidence ? `\n參考資料：\n${evidence}` : ''}`
 async function complete(
   key: string,
   messages: ChatMessage[],
-  provider: ProviderPref,
+  attempt: Attempt,
   tools: typeof toolDefs | null,
   systemExtra: string,
   lane: TurnLane,
@@ -280,18 +284,20 @@ async function complete(
       'X-Title': 'MATRIX MCP Cockpit',
     },
     body: JSON.stringify({
-      model: getOpenRouterModel(),
+      model: attempt.models[0],
+      ...(attempt.models.length > 1 ? { models: attempt.models } : {}),
       messages: [system, ...messages.filter((m) => m.role !== 'system')],
       ...(tools ? { tools, tool_choice: 'auto' as const } : {}),
       temperature: lane === 'chat' ? 0.6 : 0.2,
       max_tokens: lane === 'chat' ? 220 : lane === 'lookup' ? 480 : 700,
-      provider,
+      provider: attempt.provider,
     }),
   })
 
   const data = (await res.json().catch(() => ({}))) as {
     error?: { message?: string; code?: number }
     provider?: string
+    model?: string
     choices?: Array<{
       message?: {
         role: string
@@ -313,9 +319,10 @@ async function complete(
   return data
 }
 
+/** 401/402（key 或額度問題）換模型也沒用；其餘錯誤（429、5xx、provider 無 endpoint 的 400/404）改走備援。 */
 function retryable(err: unknown) {
   const status = (err as { status?: number }).status
-  return status === 429 || status === 502 || status === 503 || status === 529
+  return status !== 401 && status !== 402
 }
 
 export async function runOpenRouterAgent(messages: ChatMessage[], agentId?: string) {
@@ -346,16 +353,25 @@ export async function runOpenRouterAgent(messages: ChatMessage[], agentId?: stri
   const evidence = lane === 'lookup' ? await webSearch(lastUser) : undefined
 
   const pinned = getProviderOnly()
-  const attempts: ProviderPref[] = [
-    { only: pinned, allow_fallbacks: allowProviderFallbacks() },
-    { order: pinned, allow_fallbacks: true },
+  const primary = getOpenRouterModel()
+  const fallbacks = getFallbackModels()
+  const allowFallbacks = allowProviderFallbacks()
+  // 先偏好 pinned provider（預設 Together），允許時可換 provider；再失敗就改用備援模型、不限 provider。
+  const attempts: Attempt[] = [
+    {
+      provider: allowFallbacks
+        ? { order: pinned, allow_fallbacks: true }
+        : { only: pinned, allow_fallbacks: false },
+      models: allowFallbacks ? [primary, ...fallbacks] : [primary],
+    },
   ]
+  if (fallbacks.length) attempts.push({ provider: { allow_fallbacks: true }, models: fallbacks })
 
   let data: Awaited<ReturnType<typeof complete>> | null = null
   let lastError: unknown
-  for (const provider of attempts) {
+  for (const attempt of attempts) {
     try {
-      data = await complete(key, messages, provider, tools, systemExtra, lane, evidence)
+      data = await complete(key, messages, attempt, tools, systemExtra, lane, evidence)
       break
     } catch (err) {
       lastError = err
@@ -374,7 +390,7 @@ export async function runOpenRouterAgent(messages: ChatMessage[], agentId?: stri
       ui: null,
       trace: [] as ToolTraceEntry[],
       provider: data.provider ?? null,
-      model: getOpenRouterModel(),
+      model: data.model ?? primary,
     }
   }
 
@@ -405,6 +421,6 @@ export async function runOpenRouterAgent(messages: ChatMessage[], agentId?: stri
     ui,
     trace,
     provider,
-    model: getOpenRouterModel(),
+    model: data.model ?? primary,
   }
 }

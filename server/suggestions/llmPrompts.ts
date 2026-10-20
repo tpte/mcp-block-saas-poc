@@ -1,4 +1,4 @@
-import { getOpenRouterKey, getOpenRouterModel, getSiteUrl } from '../env.ts'
+import { getFallbackModels, getOpenRouterKey, getOpenRouterModel, getSiteUrl } from '../env.ts'
 import { getAgent } from '../db/store.ts'
 import { predictPrompts } from '../mcp/platform.ts'
 import { PRODUCT_OPENROUTER_APP_TITLE } from '../../shared/product.ts'
@@ -63,6 +63,7 @@ export async function llmPredictSuggestions(ctx: SuggestionContext): Promise<str
       },
       body: JSON.stringify({
         model: getOpenRouterModel(),
+        models: [getOpenRouterModel(), ...getFallbackModels()],
         messages: [
           { role: 'system', content: system },
           { role: 'user', content: user },

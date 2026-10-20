@@ -33,8 +33,20 @@ export function getProviderOnly(): string[] {
   return raw.split(',').map((s) => s.trim()).filter(Boolean)
 }
 
+/** 預設允許 OpenRouter 換 provider；設 OPENROUTER_ALLOW_FALLBACKS=false 才鎖死在 OPENROUTER_PROVIDER_ONLY。 */
 export function allowProviderFallbacks() {
-  return process.env.OPENROUTER_ALLOW_FALLBACKS === 'true'
+  return process.env.OPENROUTER_ALLOW_FALLBACKS?.trim() !== 'false'
+}
+
+/** 主模型失敗時改用的備援模型（OpenRouter `models` 陣列），逗號分隔；設成空字串可關閉。 */
+export function getFallbackModels(): string[] {
+  const raw = process.env.OPENROUTER_FALLBACK_MODELS
+  const list = raw === undefined ? 'deepseek/deepseek-v4-flash,google/gemini-3.8-flash' : raw
+  const primary = getOpenRouterModel()
+  return list
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => s && s !== primary)
 }
 
 export function getSiteUrl() {
