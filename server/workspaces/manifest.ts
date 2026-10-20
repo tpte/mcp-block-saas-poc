@@ -1,8 +1,30 @@
 import { MCP_TOOL_NAMES } from '../mcp/handlers.ts'
 import { defaultPlatform, getWorkspacePlatform, setWorkspacePlatform } from '../db/store.ts'
 import { storageGet, storagePut } from '../storage/workspaceStorage.ts'
+import { DEFAULT_COMPANY_COCKPIT } from '../../shared/cockpit.ts'
 import type { WorkspaceManifest } from '../../shared/workspaceManifest.ts'
 import { MANIFEST_FILENAME, MANIFEST_HISTORY_DIR } from '../../shared/workspaceManifest.ts'
+
+const COMPANY_WORKSPACE_ID = 'ws-company'
+
+function upgradeCompanyCockpitManifest(workspaceId: string, manifest: WorkspaceManifest): WorkspaceManifest {
+  if (workspaceId !== COMPANY_WORKSPACE_ID) return manifest
+  const hasCockpit =
+    manifest.ui.spaceProfile === 'cockpit' &&
+    (manifest.ui.cockpit?.left?.length ?? 0) + (manifest.ui.cockpit?.right?.length ?? 0) > 0
+  if (hasCockpit) return manifest
+  const next: WorkspaceManifest = {
+    ...manifest,
+    ui: {
+      ...manifest.ui,
+      spaceProfile: 'cockpit',
+      cockpit: manifest.ui.cockpit ?? DEFAULT_COMPANY_COCKPIT,
+    },
+  }
+  storagePut(workspaceId, MANIFEST_FILENAME, JSON.stringify(next, null, 2))
+  setWorkspacePlatform(workspaceId, next.ui.platform)
+  return next
+}
 import { syncInstancesFromCatalog } from './moduleRegistry.ts'
 
 export function defaultManifest(workspaceId: string, displayName: string): WorkspaceManifest {
@@ -30,7 +52,8 @@ export function loadManifest(workspaceId: string, displayName: string): Workspac
     saveManifest(workspaceId, m, { skipHistory: true })
     return m
   }
-  return syncInstancesFromCatalog(JSON.parse(raw.toString()) as WorkspaceManifest)
+  const parsed = syncInstancesFromCatalog(JSON.parse(raw.toString()) as WorkspaceManifest)
+  return upgradeCompanyCockpitManifest(workspaceId, parsed)
 }
 
 export function saveManifest(

@@ -124,6 +124,7 @@ export function SpacePage() {
         onOpenCommandPalette={openPalette}
         showModuleMenuButton={showSidebar}
         onOpenModuleMenu={() => setMobileModulesOpen(true)}
+        spaceProfile={spaceProfile}
       />
       <div className="flex min-h-0 overflow-hidden">
         {showSidebar ? (

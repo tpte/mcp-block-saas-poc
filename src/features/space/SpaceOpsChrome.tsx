@@ -1,3 +1,4 @@
+import type { SpaceProfile } from '../../../shared/workspaceManifest.ts'
 import type { PlatformConfig, CatalogItem } from '../../mcp/client'
 import { ModulePillBar } from '../module/ModulePillBar'
 import { Button } from '../../components/ui/button'
@@ -15,6 +16,7 @@ type Props = {
   onOpenCommandPalette: () => void
   onOpenModuleMenu?: () => void
   showModuleMenuButton?: boolean
+  spaceProfile?: SpaceProfile
 }
 
 export function SpaceOpsChrome({
@@ -28,6 +30,7 @@ export function SpaceOpsChrome({
   onOpenCommandPalette,
   onOpenModuleMenu,
   showModuleMenuButton,
+  spaceProfile,
 }: Props) {
   const showPills = platform.modulePillsEnabled && catalogItems.length > 0
 
@@ -35,6 +38,14 @@ export function SpaceOpsChrome({
     <>
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-[var(--line)] bg-[var(--card)]/30 px-3 py-2 md:px-4">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
+          {spaceProfile === 'cockpit' ? (
+            <span
+              className="rounded-full border border-[var(--line)] bg-[var(--bg)] px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[var(--muted)]"
+              title="中欄為 Agent 主畫布，左右為 manifest 固定小工具"
+            >
+              Cockpit 三欄
+            </span>
+          ) : null}
           {showModuleMenuButton ? (
             <Button type="button" size="sm" variant="outline" className="text-xs md:hidden" onClick={onOpenModuleMenu}>
               模組目錄

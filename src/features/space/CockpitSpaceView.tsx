@@ -37,28 +37,29 @@ export function CockpitSpaceView({ cockpit, main, platform, session, onBlockActi
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       {pinCount > 0 ? (
-        <div className="flex shrink-0 items-center gap-2 border-b border-[var(--line)] px-3 py-1.5 lg:hidden">
+        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[var(--line)] bg-[var(--card)]/40 px-3 py-2 md:hidden">
+          <p className="text-xs text-[var(--muted)]">左右為固定小工具（KPI、現金流等）</p>
           <button
             type="button"
-            className="rounded-md border border-[var(--line)] px-2 py-1 text-xs"
+            className="shrink-0 rounded-md border border-[var(--line)] bg-[var(--card)] px-2 py-1 text-xs font-medium"
             onClick={() => setPinsOpen((o) => !o)}
           >
-            {pinsOpen ? '關閉固定格' : '固定小工具'}
+            {pinsOpen ? '關閉' : '顯示固定格'}
           </button>
         </div>
       ) : null}
       <div
         className={
           pinCount > 0
-            ? 'grid min-h-0 flex-1 grid-cols-1 overflow-hidden lg:grid-cols-[minmax(220px,280px)_1fr_minmax(220px,280px)]'
+            ? 'grid min-h-0 flex-1 grid-cols-1 overflow-hidden md:grid-cols-[minmax(200px,260px)_1fr_minmax(200px,260px)]'
             : 'min-h-0 flex-1 overflow-hidden'
         }
       >
         {pinCount > 0 ? (
           <aside
-            className={`min-h-0 overflow-hidden border-[var(--line)] lg:border-r ${
-              pinsOpen ? 'max-lg:block' : 'max-lg:hidden'
-            } hidden lg:block`}
+            className={`min-h-0 overflow-hidden border-[var(--line)] md:border-r ${
+              pinsOpen ? 'max-md:block' : 'max-md:hidden'
+            } hidden md:block`}
           >
             <PinnedSlotPanel
               side="left"
@@ -75,9 +76,9 @@ export function CockpitSpaceView({ cockpit, main, platform, session, onBlockActi
         </div>
         {pinCount > 0 ? (
           <aside
-            className={`min-h-0 overflow-hidden border-[var(--line)] lg:border-l ${
-              pinsOpen ? 'max-lg:block' : 'max-lg:hidden'
-            } hidden lg:block`}
+            className={`min-h-0 overflow-hidden border-[var(--line)] md:border-l ${
+              pinsOpen ? 'max-md:block' : 'max-md:hidden'
+            } hidden md:block`}
           >
             <PinnedSlotPanel
               side="right"
@@ -91,7 +92,7 @@ export function CockpitSpaceView({ cockpit, main, platform, session, onBlockActi
         ) : null}
       </div>
       {pinsOpen && pinCount > 0 ? (
-        <div className="max-h-[45vh] shrink-0 overflow-y-auto border-t border-[var(--line)] lg:hidden">
+        <div className="max-h-[45vh] shrink-0 overflow-y-auto border-t border-[var(--line)] md:hidden">
           <div className="grid grid-cols-1 gap-2 p-2 sm:grid-cols-2">
             {left.length ? (
               <PinnedSlotPanel
