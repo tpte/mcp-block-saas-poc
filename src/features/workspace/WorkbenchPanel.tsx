@@ -71,6 +71,11 @@ export function WorkbenchPanel({ open, onToggle, embedded = false, canEdit, onSa
           ▾ 收合
         </button>
       </div>
+      {!canEdit ? (
+        <p className="mb-2 text-[11px] text-amber-800 dark:text-amber-200">
+          直接編輯 manifest 需要管理員 token；訪客可到「打造後台」勾選模組並預覽 manifest Diff。
+        </p>
+      ) : null}
       <div className="mb-2 flex flex-wrap gap-2">
         <input
           className="min-w-0 flex-1 rounded border border-[var(--line)] bg-[var(--bg)] px-2 py-1 text-xs"

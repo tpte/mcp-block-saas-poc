@@ -4,6 +4,8 @@ export type User = {
   id: string
   email: string
   displayName: string
+  /** 訪客沙盒：到期後由 sweep 清除（ISO 時間）。 */
+  guestExpiresAt?: string
 }
 
 export type WorkspaceRole = 'owner' | 'admin' | 'member' | 'viewer'
@@ -13,6 +15,8 @@ export type Workspace = {
   name: string
   slug: string
   isSample: boolean
+  /** 訪客沙盒工作區所屬的 guest user id；slug 只在該訪客的清單內唯一。 */
+  guestOwnerId?: string
 }
 
 export type WorkspaceMember = {
@@ -96,6 +100,10 @@ export type SessionContext = {
   user: User
   workspace: Workspace
   activeAgentId: string
+  /** 帶有效 MATRIX_ADMIN_TOKEN（或本機 dev 模式）才為 true。 */
+  isAdmin?: boolean
+  /** 生產環境的匿名訪客沙盒。 */
+  isGuest?: boolean
 }
 
 export type BillingUsageRecord = {

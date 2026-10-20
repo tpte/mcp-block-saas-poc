@@ -1,6 +1,7 @@
 import type { McpUiResponse, TableRow, UiBlock } from '../../shared/ui.ts'
 import { composeCanvas } from './compose.ts'
 import { sampleNotesMcp, type ExternalMcp } from './external/sampleNotes.ts'
+import { getSession } from '../requestContext.ts'
 
 const mounts = new Map<string, ExternalMcp>()
 
@@ -90,8 +91,13 @@ export async function callMountedMcp(
   if (!server) {
     return alertBlock(`找不到外部 MCP：${serverName}`)
   }
+  const admin = Boolean(getSession().isAdmin)
+  // 自架 stdio MCP 可能有副作用：訪客預設不可呼叫（MATRIX_GUEST_STDIO_CALLS=true 可開放）。
+  if (!admin && serverName !== 'notes' && process.env.MATRIX_GUEST_STDIO_CALLS !== 'true') {
+    return alertBlock(`訪客模式不能呼叫外部 MCP「${serverName}」，需要管理員 token。`)
+  }
   try {
-    const raw = await Promise.resolve(server.callTool(tool, args))
+    const raw = await Promise.resolve(server.callTool(tool, args, { readOnly: !admin }))
     return { action: 'RENDER', ui: adaptToBlock(serverName, tool, raw) }
   } catch (err) {
     return alertBlock(err instanceof Error ? err.message : '外部 MCP 呼叫失敗')

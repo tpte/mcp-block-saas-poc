@@ -5,12 +5,17 @@ import { useAgentSessionContext } from '../features/session/AgentSessionContext'
 import { LAST_SPACE_SLUG_KEY } from '../features/session/workspaceUiCache'
 import { WorkspaceCreateForm } from '../features/workspace/WorkspaceCreateForm'
 import { WorkspaceTeamPanel } from '../features/workspace/WorkspaceTeamPanel'
+import { loadAdminToken, saveAdminToken } from '../session/apiHeaders'
 
 export function MePage() {
   const navigate = useNavigate()
   const session = useAgentSessionContext()
   const user = session.devUsers.find((u) => u.id === session.clientSession.userId)
   const [teamOpen, setTeamOpen] = useState(false)
+  const [adminToken, setAdminToken] = useState(loadAdminToken)
+  const devMode = session.health?.auth?.mode !== 'guest'
+  const isGuest = Boolean(session.health?.auth?.isGuest)
+  const isAdmin = Boolean(session.health?.auth?.isAdmin)
 
   if (!session.bootstrapped && !session.offline) {
     return (
@@ -29,8 +34,10 @@ export function MePage() {
       <section className="mt-6 max-w-md space-y-4 rounded-xl border border-[var(--line)] p-4">
         <div>
           <p className="text-xs text-[var(--muted)]">使用者</p>
-          <p className="font-medium">{user?.displayName ?? session.clientSession.userId}</p>
-          <p className="text-xs text-[var(--muted)]">{user?.email}</p>
+          <p className="font-medium">{isGuest ? '訪客' : (user?.displayName ?? (isAdmin ? '管理員' : session.clientSession.userId))}</p>
+          <p className="text-xs text-[var(--muted)]">
+            {isGuest ? '訪客沙盒：資料只屬於這個瀏覽器，24 小時後自動清除。' : user?.email}
+          </p>
           <p className="mt-1 text-xs text-[var(--muted)]">
             此工作區角色：{session.capabilities.role}
             {session.capabilities.canInvite ? ' · 可邀請成員' : ''}
@@ -59,7 +66,7 @@ export function MePage() {
           </label>
         ) : null}
 
-        {session.devUsers.length > 1 ? (
+        {devMode && session.devUsers.length > 1 ? (
           <label className="block text-sm">
             <span className="text-xs text-[var(--muted)]">Demo 身份（RBAC 測試）</span>
             <select
@@ -74,6 +81,36 @@ export function MePage() {
               ))}
             </select>
           </label>
+        ) : null}
+
+        {!devMode ? (
+          <form
+            className="block text-sm"
+            onSubmit={(e) => {
+              e.preventDefault()
+              saveAdminToken(adminToken)
+              void session.refreshBackend()
+              session.showFlash(adminToken.trim() ? '已套用管理員 token' : '已移除管理員 token', 'ok')
+            }}
+          >
+            <span className="text-xs text-[var(--muted)]">管理員 token（只存在這個瀏覽器）</span>
+            <div className="mt-1 flex gap-2">
+              <input
+                type="password"
+                autoComplete="off"
+                className="min-w-0 flex-1 rounded border border-[var(--line)] bg-[var(--card)] px-2 py-1.5 text-sm"
+                value={adminToken}
+                onChange={(e) => setAdminToken(e.target.value)}
+                placeholder="MATRIX_ADMIN_TOKEN"
+              />
+              <Button type="submit" size="sm" variant="outline">
+                套用
+              </Button>
+            </div>
+            <p className="mt-1 text-xs text-[var(--muted)]">
+              {isAdmin ? '目前以管理員身份操作。' : '修改 manifest、邀請成員、營運紀錄與外殼設定需要管理員 token。'}
+            </p>
+          </form>
         ) : null}
 
         <div className="flex items-center justify-between gap-3">
@@ -112,8 +149,8 @@ export function MePage() {
                     >
                       開啟
                     </button>
-                    <Link className="text-xs text-[var(--muted)]" to={`/w/${ws.slug}/studio`}>
-                      Studio
+                    <Link className="text-xs text-[var(--muted)]" to={`/w/${ws.slug}/studio?focus=workbench`}>
+                      工作台
                     </Link>
                   </span>
                 </li>

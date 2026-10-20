@@ -6,9 +6,12 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { streamSSE } from 'hono/streaming'
 import { approveBlockPackage, listPackagesForWorkspace, submitBlockPackage } from './blocks/packages.ts'
-import { sessionFromHeaders } from './context.ts'
+import { sessionFromHeaders, trySessionFromHeaders } from './context.ts'
+import { AuthError, adminTokenConfigured, authMode, clientIp, denyUnlessAdmin } from './auth.ts'
+import { tryConsumeLlm, usageSnapshot } from './usage.ts'
 import {
   allowProviderFallbacks,
+  getFallbackModels,
   getOpenRouterKey,
   getOpenRouterModel,
   getProviderOnly,
@@ -24,8 +27,18 @@ import { getPlatform, predictPrompts } from './mcp/platform.ts'
 import { chatFallback, dataReply, isConversational, localAnswer } from './agent/lane.ts'
 import { runDirectData } from './agent/dataTurn.ts'
 import { llmPredictSuggestions } from './suggestions/llmPrompts.ts'
-import { dispatchToolWithTrace, finalizeTurn } from './mcp/turn.ts'
-import { getRunTree, listAgents, listRecentRuns, listUsers, resolveSession } from './db/store.ts'
+import { dispatchToolWithTrace, finalizeTurn, PLATFORM_TOOL } from './mcp/turn.ts'
+import {
+  countActiveGuests,
+  createGuestSandbox,
+  getRunTree,
+  listAgents,
+  listRecentRuns,
+  listUsers,
+  resolveSession,
+  sweepExpiredGuests,
+} from './db/store.ts'
+import { RbacError } from './workspaces/rbac.ts'
 import { listUsersInWorkspace, sessionCapabilities } from './workspaces/rbac.ts'
 import { runOpenRouterAgent, type ChatMessage } from './openrouter.ts'
 import { runWithSession } from './requestContext.ts'
@@ -44,16 +57,80 @@ import {
 const app = new Hono()
 
 app.use('/api/*', cors())
+
+/** 不需身份即可呼叫的端點；其餘 /api/* 在 guest 模式需訪客 id 或 admin token。 */
+const PUBLIC_API = new Set(['/api/health', '/api/guest/session', '/api/billing/spec', '/api/blocks/templates'])
+
 app.use('/api/*', async (c, next) => {
-  const session = sessionFromHeaders(c)
+  if (PUBLIC_API.has(c.req.path)) return next()
+  let session
+  try {
+    session = sessionFromHeaders(c)
+  } catch (err) {
+    if (err instanceof AuthError) return c.json({ error: err.message, code: err.code }, err.status)
+    throw err
+  }
   await runWithSession(session, () => next())
 })
+
+app.onError((err, c) => {
+  if (err instanceof AuthError) return c.json({ error: err.message, code: err.code }, err.status)
+  if (err instanceof RbacError) return c.json({ error: err.message }, 403)
+  console.error(err)
+  return c.json({ error: 'internal error' }, 500)
+})
+
+const GUEST_TTL_MS = Math.max(1, Number(process.env.MATRIX_GUEST_TTL_HOURS || 24)) * 3600_000
+const GUEST_MAX_ACTIVE = Number(process.env.MATRIX_GUEST_MAX_ACTIVE || 2000)
+const GUEST_CREATE_PER_IP_HOUR = Number(process.env.MATRIX_GUEST_CREATE_PER_IP_HOUR || 20)
+const guestCreates = new Map<string, number[]>()
+
+/** 每位訪客拿到隨機 guest id 與兩個沙盒工作區；24 小時後由 sweep 清除。 */
+app.post('/api/guest/session', (c) => {
+  if (authMode() === 'dev') {
+    return c.json({ error: 'dev 模式不需要訪客 session', code: 'dev_mode' }, 400)
+  }
+  const ip = clientIp(c)
+  const now = Date.now()
+  const recent = (guestCreates.get(ip) ?? []).filter((t) => now - t < 3600_000)
+  if (recent.length >= GUEST_CREATE_PER_IP_HOUR) {
+    return c.json({ error: '建立訪客太頻繁，請稍後再試', code: 'rate_limited' }, 429)
+  }
+  if (countActiveGuests() >= GUEST_MAX_ACTIVE) {
+    sweepExpiredGuests()
+    if (countActiveGuests() >= GUEST_MAX_ACTIVE) {
+      return c.json({ error: '訪客名額已滿，請稍後再試', code: 'guest_capacity' }, 503)
+    }
+  }
+  recent.push(now)
+  guestCreates.set(ip, recent)
+  const guest = createGuestSandbox(GUEST_TTL_MS)
+  const dev = guest.workspaces[0]!
+  return c.json({
+    session: { userId: guest.user.id, workspaceId: dev.id, agentId: guest.agents[0]!.id },
+    workspaces: guest.workspaces,
+    expiresAt: guest.expiresAt,
+  })
+})
+
+void sweepExpiredGuests()
+setInterval(() => {
+  const n = sweepExpiredGuests()
+  if (n) console.log(`guest sweep: 清除 ${n} 位過期訪客`)
+  const cutoff = Date.now() - 3600_000
+  for (const [ip, list] of guestCreates) {
+    const kept = list.filter((t) => t > cutoff)
+    if (kept.length) guestCreates.set(ip, kept)
+    else guestCreates.delete(ip)
+  }
+}, 10 * 60_000).unref()
 
 registerWorkspaceRoutes(app)
 registerBuilderRoutes(app)
 
 app.get('/api/health', (c) => {
-  const session = sessionFromHeaders(c)
+  // 不回傳使用者姓名；只有帶有效身份時才附上工作區資訊。
+  const session = trySessionFromHeaders(c)
   const key = getOpenRouterKey()
   return c.json({
     ok: true,
@@ -63,18 +140,25 @@ app.get('/api/health', (c) => {
       subtitle: PRODUCT_SUBTITLE,
       tagline: PRODUCT_TAGLINE,
     },
-    session: {
-      userId: session.user.id,
-      userName: session.user.displayName,
-      workspaceId: session.workspace.id,
-      workspaceName: session.workspace.name,
-      workspaceSample: session.workspace.isSample,
-      agentId: session.activeAgentId,
+    session: session
+      ? {
+          workspaceId: session.workspace.id,
+          workspaceName: session.workspace.name,
+          workspaceSample: session.workspace.isSample,
+          agentId: session.activeAgentId,
+        }
+      : null,
+    auth: {
+      mode: authMode(),
+      adminTokenConfigured: adminTokenConfigured(),
+      isAdmin: Boolean(session?.isAdmin),
+      isGuest: Boolean(session?.isGuest),
     },
     openRouterConfigured: Boolean(key),
     model: getOpenRouterModel(),
     providerOnly: getProviderOnly(),
     allowFallbacks: allowProviderFallbacks(),
+    fallbackModels: getFallbackModels(),
     persistence: {
       ephemeral: Boolean(process.env.RAILWAY_ENVIRONMENT && process.env.MATRIX_VOLUME_MOUNTED !== 'true'),
       hint: 'Railway 請掛 Volume 至 /app/.data，並設 MATRIX_VOLUME_MOUNTED=true',
@@ -84,16 +168,25 @@ app.get('/api/health', (c) => {
 
 app.get('/api/session', (c) => {
   const session = sessionFromHeaders(c)
+  const dev = authMode() === 'dev'
   return c.json({
     session: {
       user: session.user,
       workspace: session.workspace,
       activeAgentId: session.activeAgentId,
       capabilities: sessionCapabilities(session),
+      isAdmin: Boolean(session.isAdmin),
+      isGuest: Boolean(session.isGuest),
     },
     agents: listAgents(session.workspace.id),
-    workspaceMembers: listUsersInWorkspace(session.workspace.id),
-    devUsers: listUsers().map((u) => ({ id: u.id, displayName: u.displayName, email: u.email })),
+    workspaceMembers: session.isGuest ? [] : listUsersInWorkspace(session.workspace.id),
+    // Demo 身份切換只在本機 dev 模式提供。
+    devUsers: dev
+      ? listUsers()
+          .filter((u) => !u.guestExpiresAt)
+          .map((u) => ({ id: u.id, displayName: u.displayName, email: u.email }))
+      : [],
+    usage: usageSnapshot(session),
   })
 })
 
@@ -108,6 +201,10 @@ app.get('/api/platform', (c) => {
 
 app.post('/api/suggestions', async (c) => {
   const session = sessionFromHeaders(c)
+  if (!session.isAdmin) {
+    // 訪客不為「下一句建議」打模型。
+    return c.json({ suggestions: predictPrompts() })
+  }
   const body = await c.req.json<{
     messages?: { role: 'user' | 'assistant'; content: string }[]
     canvasSummary?: string
@@ -136,7 +233,10 @@ app.get('/api/runs/recent', (c) => {
 })
 
 app.get('/api/runs/:runId/tree', (c) => {
-  const nodes = getRunTree(c.req.param('runId'))
+  const session = sessionFromHeaders(c)
+  const nodes = getRunTree(c.req.param('runId')).filter(
+    (n) => session.isAdmin || n.workspaceId === session.workspace.id,
+  )
   return c.json({ runId: c.req.param('runId'), tree: buildTopologyTree(nodes), nodes })
 })
 
@@ -147,6 +247,8 @@ app.get('/api/blocks/packages', (c) => {
 
 app.post('/api/blocks/packages', async (c) => {
   const session = sessionFromHeaders(c)
+  const denied = denyUnlessAdmin(c, session)
+  if (denied) return denied
   const body = await c.req.json<{
     name: string
     version: string
@@ -168,6 +270,8 @@ app.post('/api/blocks/packages', async (c) => {
 
 app.post('/api/blocks/packages/:id/approve', (c) => {
   const session = sessionFromHeaders(c)
+  const denied = denyUnlessAdmin(c, session)
+  if (denied) return denied
   const pkg = approveBlockPackage(session.workspace.id, c.req.param('id'), true)
   return c.json({ package: pkg })
 })
@@ -179,6 +283,13 @@ app.get('/api/storage', (c) => {
 
 app.get('/api/billing/spec', (c) => {
   return c.json({ version: BILLING_SPEC_VERSION, quotes: DEFAULT_QUOTES })
+})
+
+// /api/ops/* 屬營運紀錄，僅限 admin token。
+app.use('/api/ops/*', async (c, next) => {
+  const denied = denyUnlessAdmin(c, sessionFromHeaders(c))
+  if (denied) return denied
+  return next()
 })
 
 app.get('/api/ops/summary', (c) => {
@@ -217,6 +328,10 @@ app.post('/api/mcp/invoke', async (c) => {
   const runId = newRunId()
   const started = performance.now()
   const body = await c.req.json<{ tool: string; payload?: Record<string, unknown> }>()
+  if (body.tool === PLATFORM_TOOL) {
+    const denied = denyUnlessAdmin(c, session)
+    if (denied) return denied
+  }
   const userLogId = logUserMessage(session, body.tool, { source: 'invoke' })
   const result = await dispatchToolWithTrace(body.tool, body.payload, { source: 'invoke' })
   const nodes = persistTrace(result.trace, { runId, parentNodeId: null })
@@ -241,10 +356,17 @@ app.post('/api/mcp/invoke', async (c) => {
 
 app.post('/api/agent/chat', async (c) => {
   const body = await c.req.json<{ messages: ChatMessage[]; agentId?: string }>()
-  const messages = body.messages ?? []
   const session = sessionFromHeaders(c)
+  // 訪客只送最近 12 則、每則 2000 字，避免長上下文燒 token。
+  const messages = session.isAdmin
+    ? (body.messages ?? [])
+    : (body.messages ?? []).slice(-12).map((m) => ({ ...m, content: String(m.content ?? '').slice(0, 2000) }))
   const chatSession = body.agentId
-    ? resolveSession(session.user.id, session.workspace.id, body.agentId)
+    ? {
+        ...resolveSession(session.user.id, session.workspace.id, body.agentId),
+        isAdmin: session.isAdmin,
+        isGuest: session.isGuest,
+      }
     : session
   const lastUser = [...messages].reverse().find((m) => m.role === 'user')
   const text = lastUser?.content || ''
@@ -371,7 +493,9 @@ app.post('/api/agent/chat', async (c) => {
       }, 1000)
 
       try {
-        if (!getOpenRouterKey()) {
+        const gate = getOpenRouterKey() ? tryConsumeLlm(chatSession) : null
+        if (gate && !gate.ok) await status(gate.message)
+        if (!gate?.ok) {
           clearInterval(timer)
           if (isConversational(text)) {
             const reply = chatFallback(text)
@@ -401,8 +525,8 @@ app.post('/api/agent/chat', async (c) => {
             })
             return
           }
-          await status('沒有 OpenRouter key，改走本機 MCP')
-          const started = performance.now()
+          if (!gate) await status('沒有 OpenRouter key，改走本機 MCP')
+          const keywordStarted = performance.now()
           const ui = await runKeywordAgent(text)
           const turn = finalizeTurn(text, ui)
           const trace = [
@@ -410,7 +534,7 @@ app.post('/api/agent/chat', async (c) => {
               tool: 'keywordAgent',
               source: 'chat' as const,
               mode: 'offline' as const,
-              durationMs: Math.round(performance.now() - started),
+              durationMs: Math.round(performance.now() - keywordStarted),
               ok: true,
             },
           ]

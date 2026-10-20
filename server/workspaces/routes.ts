@@ -21,6 +21,7 @@ import {
   listWorkspacesForUser,
 } from '../db/store.ts'
 import { sessionFromHeaders } from '../context.ts'
+import { denyUnlessAdmin } from '../auth.ts'
 import { logCanvasOp, logManifestEdit } from '../ops/record.ts'
 import type { WorkspaceManifest } from '../../shared/workspaceManifest.ts'
 import { buildResourceGraph } from './resourceMap.ts'
@@ -48,6 +49,8 @@ export function registerWorkspaceRoutes(app: Hono) {
 
   app.post('/api/workspaces', async (c) => {
     const session = sessionFromHeaders(c)
+    const denied = denyUnlessAdmin(c, session)
+    if (denied) return denied
     const body = await c.req.json<{ name: string; slug: string }>()
     try {
       const result = createWorkspace({
@@ -64,8 +67,17 @@ export function registerWorkspaceRoutes(app: Hono) {
   app.get('/api/workspaces/:id/members', (c) => {
     const session = sessionFromHeaders(c)
     requireMinRole(session, 'member')
-    if (session.workspace.id !== c.req.param('id')) requireMinRole(session, 'admin')
+    if (session.workspace.id !== c.req.param('id') && !session.isAdmin) {
+      return c.json({ error: '只能查看目前工作區的成員' }, 403)
+    }
     return c.json({ members: listUsersInWorkspace(c.req.param('id')) })
+  })
+
+  // 邀請會改動共享成員名單：一律需 admin token。
+  app.use('/api/workspaces/:id/invites', async (c, next) => {
+    const denied = denyUnlessAdmin(c, sessionFromHeaders(c))
+    if (denied) return denied
+    return next()
   })
 
   app.get('/api/workspaces/:id/invites', (c) => {
@@ -98,6 +110,8 @@ export function registerWorkspaceRoutes(app: Hono) {
 
   app.post('/api/invites/accept', async (c) => {
     const session = sessionFromHeaders(c)
+    const denied = denyUnlessAdmin(c, session)
+    if (denied) return denied
     const body = await c.req.json<{ token: string }>()
     try {
       const invite = acceptInvite(body.token, session.user.id)
@@ -116,6 +130,8 @@ export function registerWorkspaceRoutes(app: Hono) {
 
   app.put('/api/manifest', async (c) => {
     const session = sessionFromHeaders(c)
+    const denied = denyUnlessAdmin(c, session)
+    if (denied) return denied
     try {
       if (!canManageManifest(session)) throw new RbacError('無法修改 manifest')
       const body = await c.req.json<{ manifest: WorkspaceManifest }>()
@@ -168,6 +184,8 @@ export function registerWorkspaceRoutes(app: Hono) {
 
   app.put('/api/workbench/file', async (c) => {
     const session = sessionFromHeaders(c)
+    const denied = denyUnlessAdmin(c, session)
+    if (denied) return denied
     try {
       if (!canManageManifest(session)) throw new RbacError('無法寫入工作台')
       const body = await c.req.json<{ key: string; content: string }>()

@@ -2,6 +2,7 @@ import type { UiBlock } from '../../shared/ui.ts'
 import type { SetupContext } from './setupContext.ts'
 
 export function buildWelcomeBlocks(input: { title: string; ctx: SetupContext; footnote?: string }): UiBlock[] {
+  const { ctx } = input
   const steps = [
     ctx.dataSourceCount === 0
       ? '1. 在「打造後台」規劃資料源，或請 Agent 用 data-source skill 解釋'

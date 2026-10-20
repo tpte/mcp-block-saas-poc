@@ -24,7 +24,19 @@ export function getPlatform(): PlatformConfig {
   }
 }
 
+export class PlatformAdminRequiredError extends Error {
+  constructor() {
+    super('platform:patch 需要管理員 token（Authorization: Bearer MATRIX_ADMIN_TOKEN）')
+    this.name = 'PlatformAdminRequiredError'
+  }
+}
+
+export function canPatchPlatform() {
+  return Boolean(getSession().isAdmin)
+}
+
 export function applyPlatformPatch(patch: Partial<PlatformConfig>) {
+  if (!canPatchPlatform()) throw new PlatformAdminRequiredError()
   const { workspace } = getSession()
   const config = getWorkspacePlatform(workspace.id)
   const sanitized = sanitize(patch)
@@ -131,7 +143,9 @@ export function predictPrompts(): string[] {
     analytics: ['看本週報表', '本週現金流', '改成深色'],
     bridge: ['讀取記事', '看這個月的請假', '改成深色'],
   }
-  const list = pools[lastTopic] ?? pools.home
+  const base = pools[lastTopic] ?? pools.home
+  // 訪客不能改外殼（platform:patch 需 admin），改給可直接試的資料問題。
+  const list = canPatchPlatform() ? base : base.map((t) => (t === '改成深色' ? '本週 KPI' : t))
   return list.slice(0, config.suggestionCount)
 }
 

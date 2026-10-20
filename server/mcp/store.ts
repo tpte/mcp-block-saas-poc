@@ -2,7 +2,7 @@ import type { TableRow } from '../../shared/ui.ts'
 
 export const tenant = {
   name: '北極星科技',
-  user: 'Alan Huang',
+  user: '王經理',
   role: '營運主管',
 }
 
@@ -30,14 +30,23 @@ export let tickets: TableRow[] = [
   { id: 103, customer: '綠能科技', subject: '權限申請', priority: '低', status: 'assigned' },
 ]
 
-export function approveAllLeave() {
-  leaveRows = leaveRows.map((row) => ({ ...row, status: 'approved' }))
+/*
+ * 示範資料是全站共用的記憶體狀態。persist=false（訪客）時只回傳模擬結果，不改共享資料。
+ */
+export function approveAllLeave(persist = true) {
+  const next = leaveRows.map((row) => ({ ...row, status: 'approved' }))
+  if (persist) leaveRows = next
+  return next
 }
 
-export function assignFirstTicket() {
-  tickets = tickets.map((row, i) => (i === 0 ? { ...row, status: 'assigned', owner: 'Alan' } : row))
+export function assignFirstTicket(persist = true) {
+  const next = tickets.map((row, i) => (i === 0 ? { ...row, status: 'assigned', owner: tenant.user } : row))
+  if (persist) tickets = next
+  return next
 }
 
-export function reorderCriticalStock() {
-  stockRows[2] = { ...stockRows[2], qty: 45, status: 'ok' }
+export function reorderCriticalStock(persist = true) {
+  const next = stockRows.map((row, i) => (i === 2 ? { ...row, qty: 45, status: 'ok' } : row))
+  if (persist) stockRows.splice(0, stockRows.length, ...next)
+  return next
 }

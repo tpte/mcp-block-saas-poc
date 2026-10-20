@@ -1,9 +1,9 @@
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { DEFAULT_LAYOUT_PREFERENCES } from '../../shared/platform.ts'
-import { PRODUCT_NAME, PRODUCT_SUBTITLE } from '../../shared/product.ts'
+import { LEGACY_PRODUCT_SUBTITLES, PRODUCT_NAME, PRODUCT_SUBTITLE } from '../../shared/product.ts'
 import type { PlatformConfig } from '../../shared/platform.ts'
-import { randomUUID } from 'node:crypto'
+import { randomBytes, randomUUID } from 'node:crypto'
 import type {
   Agent,
   BlockPackage,
@@ -228,7 +228,7 @@ function writeCompanyStarterManifest(workspaceId: string, displayName: string, p
 }
 
 function ensureCompanyOpsManifest(db: DbShape): boolean {
-  const company = db.workspaces.find((w) => w.slug === 'company')
+  const company = db.workspaces.find((w) => w.slug === 'company' && !w.guestOwnerId)
   if (!company) return false
   const path = join(DATA_DIR, 'storage', company.id, MANIFEST_FILENAME)
   const plat = db.platformByWorkspace[company.id]
@@ -347,12 +347,12 @@ function migrateLegacyBranding(db: DbShape): boolean {
     }
   }
 
-  const personal = db.workspaces.find((w) => w.slug === 'personal')
+  const personal = db.workspaces.find((w) => w.slug === 'personal' && !w.guestOwnerId)
   if (personal && personal.name.includes('駕駛艙')) {
     personal.name = '開發者工作台'
   }
 
-  const sample = db.workspaces.find((w) => w.slug === 'sample-erp')
+  const sample = db.workspaces.find((w) => w.slug === 'sample-erp' && !w.guestOwnerId)
   if (sample) {
     if (sample.name.includes('Sample') || sample.name.includes('示範 ERP')) {
       sample.name = '模組範例'
@@ -364,10 +364,10 @@ function migrateLegacyBranding(db: DbShape): boolean {
     }
   }
 
-  const personalPlat = db.platformByWorkspace[db.workspaces.find((w) => w.slug === 'personal')?.id ?? '']
+  const personalPlat = db.platformByWorkspace[db.workspaces.find((w) => w.slug === 'personal' && !w.guestOwnerId)?.id ?? '']
   if (personalPlat) personalPlat.moduleSidebarEnabled = true
 
-  const companyId = db.workspaces.find((w) => w.slug === 'company')?.id
+  const companyId = db.workspaces.find((w) => w.slug === 'company' && !w.guestOwnerId)?.id
   if (companyId && db.platformByWorkspace[companyId]) {
     db.platformByWorkspace[companyId].modulePillsEnabled = true
   }
@@ -377,7 +377,7 @@ function migrateLegacyBranding(db: DbShape): boolean {
 }
 
 function seedCompanyManifestIfNeeded(db: DbShape) {
-  const company = db.workspaces.find((w) => w.slug === 'company')
+  const company = db.workspaces.find((w) => w.slug === 'company' && !w.guestOwnerId)
   if (!company) return
   const path = join(DATA_DIR, 'storage', company.id, MANIFEST_FILENAME)
   if (!existsSync(path)) {
@@ -427,7 +427,7 @@ function load(): DbShape {
   }
   cache = JSON.parse(readFileSync(DB_PATH, 'utf8')) as DbShape
   if (!Array.isArray(cache.workspaceInvites)) cache.workspaceInvites = []
-  if (!cache.workspaces.some((w) => w.slug === 'company')) {
+  if (!cache.workspaces.some((w) => w.slug === 'company' && !w.guestOwnerId)) {
     const fresh = seed()
     const company = fresh.workspaces.find((w) => w.slug === 'company')!
     cache.workspaces.push(company)
@@ -463,6 +463,14 @@ function load(): DbShape {
     /* manifest only */
   }
   if (dedupeWorkspaces(cache)) persist()
+  let subtitleMigrated = false
+  for (const plat of Object.values(cache.platformByWorkspace)) {
+    if (LEGACY_PRODUCT_SUBTITLES.includes(plat.subtitle)) {
+      plat.subtitle = PRODUCT_SUBTITLE
+      subtitleMigrated = true
+    }
+  }
+  if (subtitleMigrated) persist()
   return cache
 }
 
@@ -510,7 +518,7 @@ export function listWorkspacesForUser(userId: string) {
 export function createWorkspace(input: { name: string; slug: string; ownerUserId: string }) {
   const db = load()
   const slug = input.slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-')
-  if (db.workspaces.some((w) => w.slug === slug)) throw new Error('slug 已存在')
+  if (db.workspaces.some((w) => w.slug === slug && !w.guestOwnerId)) throw new Error('slug 已存在')
   const id = `ws-${randomUUID().slice(0, 8)}`
   const workspace: Workspace = { id, name: input.name.trim(), slug, isSample: false }
   db.workspaces.push(workspace)
@@ -600,7 +608,10 @@ export function resolveSession(userId?: string, workspaceId?: string, agentId?: 
   if (workspace && !getMemberRole(workspace.id, user.id)) workspace = null
   if (!workspace) {
     const allowed = listWorkspacesForUser(user.id)
-    workspace = allowed[0] ?? db.workspaces[0]
+    workspace = allowed[0] ?? null
+  }
+  if (!workspace) {
+    throw new Error(`使用者 ${user.id} 沒有可用工作區`)
   }
   const inWorkspace = db.agents.filter((a) => a.workspaceId === workspace.id)
   const agent =
@@ -663,6 +674,117 @@ export function upsertBlockPackage(pkg: BlockPackage) {
 
 export function getPublishedBlockPackages(workspaceId: string) {
   return load().blockPackages.filter((b) => b.workspaceId === workspaceId && b.status === 'published')
+}
+
+// ── 訪客沙盒 ──────────────────────────────────────────────
+
+export const GUEST_ID_PREFIX = 'guest-'
+
+export function isActiveGuest(userId: string, now = Date.now()) {
+  if (!userId.startsWith(GUEST_ID_PREFIX)) return false
+  const user = load().users.find((u) => u.id === userId)
+  return Boolean(user?.guestExpiresAt && Date.parse(user.guestExpiresAt) > now)
+}
+
+export function countActiveGuests(now = Date.now()) {
+  return load().users.filter((u) => u.guestExpiresAt && Date.parse(u.guestExpiresAt) > now).length
+}
+
+/**
+ * 建立訪客：一位暫時使用者 + 兩個沙盒工作區（開發者工作台 / 營運後台範例）。
+ * 開發者工作台用預設 manifest（等同 ws-personal 的初始狀態），營運後台用 company-starter 模板，
+ * 不複製 Alan 真實工作區內容。slug 與共享工作區相同，前端路由（/w/personal、/w/company）不需改。
+ */
+export function createGuestSandbox(ttlMs: number) {
+  const db = load()
+  const secret = randomBytes(16).toString('hex')
+  const short = secret.slice(0, 10)
+  const userId = `${GUEST_ID_PREFIX}${secret}`
+  const expiresAt = new Date(Date.now() + ttlMs).toISOString()
+  const user: User = {
+    id: userId,
+    email: `${userId}@guest.matrix.local`,
+    displayName: '訪客',
+    guestExpiresAt: expiresAt,
+  }
+  const dev: Workspace = {
+    id: `ws-g${short}-dev`,
+    name: '開發者工作台',
+    slug: 'personal',
+    isSample: false,
+    guestOwnerId: userId,
+  }
+  const ops: Workspace = {
+    id: `ws-g${short}-ops`,
+    name: '營運後台範例',
+    slug: 'company',
+    isSample: false,
+    guestOwnerId: userId,
+  }
+  const fresh = seed()
+  const personalTpl = fresh.agents.find((a) => a.id === 'agent-personal')!
+  const companyTpl = fresh.agents.find((a) => a.id === COMPANY_AGENT_ID)!
+  const devAgent: Agent = {
+    ...personalTpl,
+    policy: { ...personalTpl.policy, allowedToolPrefixes: [...personalTpl.policy.allowedToolPrefixes], canDelegate: false },
+    id: `agent-g${short}-dev`,
+    workspaceId: dev.id,
+    ownerUserId: userId,
+  }
+  const opsAgent: Agent = {
+    ...companyTpl,
+    policy: { ...companyTpl.policy, allowedToolPrefixes: [...companyTpl.policy.allowedToolPrefixes], canDelegate: false },
+    id: `agent-g${short}-ops`,
+    workspaceId: ops.id,
+    ownerUserId: userId,
+  }
+  const devPlatform = { ...fresh.platformByWorkspace['ws-personal']! }
+  const opsPlatform = { ...fresh.platformByWorkspace[COMPANY_WORKSPACE_ID]! }
+
+  db.users.push(user)
+  db.workspaces.push(dev, ops)
+  db.agents.push(devAgent, opsAgent)
+  db.platformByWorkspace[dev.id] = devPlatform
+  db.platformByWorkspace[ops.id] = opsPlatform
+  // 訪客在自己的沙盒是 admin（可試 builder 流程）；共享狀態的寫入另由 admin token 把關。
+  db.workspaceMembers.push(
+    { workspaceId: dev.id, userId, role: 'admin' },
+    { workspaceId: ops.id, userId, role: 'admin' },
+  )
+  writeCompanyStarterManifest(ops.id, ops.name, opsPlatform)
+  persist()
+  return { user, workspaces: [dev, ops], agents: [devAgent, opsAgent], expiresAt }
+}
+
+/** 刪除過期訪客與其沙盒資料（DB 紀錄、storage、ops log）。回傳清掉的訪客數。 */
+export function sweepExpiredGuests(now = Date.now()) {
+  const db = load()
+  const expired = new Set(
+    db.users.filter((u) => u.guestExpiresAt && Date.parse(u.guestExpiresAt) <= now).map((u) => u.id),
+  )
+  if (!expired.size) return 0
+  const wsIds = new Set(
+    db.workspaces.filter((w) => w.guestOwnerId && expired.has(w.guestOwnerId)).map((w) => w.id),
+  )
+  db.users = db.users.filter((u) => !expired.has(u.id))
+  db.workspaces = db.workspaces.filter((w) => !wsIds.has(w.id))
+  db.workspaceMembers = db.workspaceMembers.filter((m) => !wsIds.has(m.workspaceId) && !expired.has(m.userId))
+  db.agents = db.agents.filter((a) => !wsIds.has(a.workspaceId))
+  db.blockPackages = db.blockPackages.filter((p) => !wsIds.has(p.workspaceId))
+  db.runNodes = db.runNodes.filter((n) => !wsIds.has(n.workspaceId))
+  db.workspaceInvites = db.workspaceInvites.filter((i) => !wsIds.has(i.workspaceId))
+  db.mcpMounts = db.mcpMounts.filter((m) => !wsIds.has(m.workspaceId))
+  for (const id of wsIds) {
+    delete db.platformByWorkspace[id]
+    try {
+      rmSync(join(DATA_DIR, 'storage', id), { recursive: true, force: true })
+      rmSync(join(DATA_DIR, 'ops', `${id}.jsonl`), { force: true })
+    } catch {
+      /* ignore */
+    }
+  }
+  persist()
+  return expired.size
 }
 
 export { defaultPlatform }

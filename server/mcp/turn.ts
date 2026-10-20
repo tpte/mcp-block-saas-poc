@@ -7,6 +7,7 @@ import { composeCanvas, speechToBlocks } from './compose.ts'
 import { invokeMcpTool } from './handlers.ts'
 import {
   applyPlatformPatch,
+  canPatchPlatform,
   getPlatform,
   interpretPlatform,
   looksLikeData,
@@ -93,7 +94,7 @@ async function dispatchToolInner(name: string, payload?: Record<string, unknown>
     return composeCanvas(payload)
   }
   if (name === WORKSPACE_NAVIGATE) {
-    const path = payload?.path === 'studio' ? 'Studio' : 'SPACE'
+    const path = payload?.path === 'studio' ? '工作區設定' : '工作區'
     const query = payload?.query && typeof payload.query === 'object' ? payload.query : undefined
     const hint =
       query && Object.keys(query).length
@@ -146,11 +147,18 @@ async function dispatchToolInner(name: string, payload?: Record<string, unknown>
 
 export function finalizeTurn(message: string, ui: McpUiResponse | null) {
   const patch = interpretPlatform(message)
-  if (patch) applyPlatformPatch(patch)
+  const allowed = patch ? canPatchPlatform() : false
+  if (patch && allowed) applyPlatformPatch(patch)
   const topic = topicFromMessage(message)
   if (topic) noteTopic(topic)
   const platformOnly = Boolean(patch) && !looksLikeData(message)
-  const rendered = platformOnly ? speechToBlocks('已透過 platform MCP 更新外殼。') : ui
+  const rendered = platformOnly
+    ? speechToBlocks(
+        allowed
+          ? '已透過 platform MCP 更新外殼。'
+          : '訪客模式不能改外殼設定（platform:patch 需要管理員 token）。可以試試 ⌘K 或問資料。',
+      )
+    : ui
   return {
     ui: rendered,
     platform: getPlatform(),

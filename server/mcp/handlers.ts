@@ -1,6 +1,7 @@
 import type { McpUiResponse, UiBlock } from '../../shared/ui.ts'
 import { callMountedMcp, explainCapability, listMountedMcps } from './bridge.ts'
 import { speechToBlocks } from './compose.ts'
+import { getSession } from '../requestContext.ts'
 import {
   approveAllLeave,
   assignFirstTicket,
@@ -45,14 +46,18 @@ export const MCP_TOOL_NAMES = [
 
 export type McpToolName = (typeof MCP_TOOL_NAMES)[number]
 
+/** 只有 admin（或本機 dev）會寫入共用示範資料；訪客得到模擬結果。 */
+function persistDemoWrites() {
+  return Boolean(getSession().isAdmin)
+}
+
 export function invokeMcpTool(tool: string, _payload?: Record<string, unknown>): McpUiResponse {
   switch (tool) {
     case 'hr:approve_all':
-      approveAllLeave()
       return {
         action: 'UPDATE_DATA',
         targetBlockId: 'hr-leave-table-202610',
-        patch: { data: [...leaveRows] },
+        patch: { data: approveAllLeave(persistDemoWrites()) },
       }
     case 'hr:get_leave': {
       const table = leaveTable()
@@ -231,11 +236,10 @@ export function invokeMcpTool(tool: string, _payload?: Record<string, unknown>):
         },
       }
     case 'inventory:reorder':
-      reorderCriticalStock()
       return {
         action: 'UPDATE_DATA',
         targetBlockId: 'inv-table-1',
-        patch: { data: [...stockRows] },
+        patch: { data: reorderCriticalStock(persistDemoWrites()) },
       }
     case 'support:open_tickets':
       return {
@@ -292,11 +296,10 @@ export function invokeMcpTool(tool: string, _payload?: Record<string, unknown>):
         },
       }
     case 'support:assign':
-      assignFirstTicket()
       return {
         action: 'UPDATE_DATA',
         targetBlockId: 'support-table-open',
-        patch: { data: tickets.filter((t) => t.status !== 'closed') },
+        patch: { data: assignFirstTicket(persistDemoWrites()).filter((t) => t.status !== 'closed') },
       }
     case 'analytics:kpi_week':
       return {

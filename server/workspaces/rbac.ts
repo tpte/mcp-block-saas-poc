@@ -42,8 +42,11 @@ export function sessionCapabilities(session: SessionContext) {
   const role = roleOf(session)
   return {
     role,
+    /** builder 流程（勾模組、資料源計畫）：訪客可在自己的沙盒試。 */
     canManageManifest: canManageManifest(session),
-    canInvite: canInvite(session),
+    /** 直接寫 manifest／工作台檔案、邀請成員：需 admin token。 */
+    canWriteManifest: Boolean(session.isAdmin) && canManageManifest(session),
+    canInvite: Boolean(session.isAdmin) && canInvite(session),
     canEditCanvas: canEditCanvas(session),
   }
 }

@@ -7,7 +7,8 @@ export type ExternalMcp = {
   name: string
   description: string
   listTools: () => ExternalTool[]
-  callTool: (tool: string, args: Record<string, unknown>) => unknown | Promise<unknown>
+  /** readOnly=true（訪客）時，寫入類 tool 只回傳模擬結果，不改共享狀態。 */
+  callTool: (tool: string, args: Record<string, unknown>, opts?: { readOnly?: boolean }) => unknown | Promise<unknown>
 }
 
 const notes = [
@@ -22,13 +23,15 @@ export const sampleNotesMcp: ExternalMcp = {
     { name: 'notes:list', description: '列出記事' },
     { name: 'notes:add', description: '新增一則記事' },
   ],
-  callTool(tool, args) {
+  callTool(tool, args, opts) {
     if (tool === 'notes:add') {
-      notes.unshift({
+      const row = {
         id: Date.now(),
-        title: String(args.title ?? '未命名'),
-        body: String(args.body ?? ''),
-      })
+        title: String(args.title ?? '未命名').slice(0, 80),
+        body: String(args.body ?? '').slice(0, 500),
+      }
+      if (opts?.readOnly) return [row, ...notes].map((r) => ({ ...r }))
+      notes.unshift(row)
     }
     if (tool === 'notes:list' || tool === 'notes:add') return notes.map((row) => ({ ...row }))
     throw new Error(`notes MCP 沒有 ${tool}`)

@@ -82,7 +82,7 @@ export type AgentSessionOptions = {
   loadCanvas?: boolean
 }
 
-const PLAIN_SUGGESTIONS = ['看這個月的請假', '本週現金流', '改成深色']
+const PLAIN_SUGGESTIONS = ['看這個月的請假', '本週現金流', '本週 KPI']
 
 function plainSuggestions(list: string[], count: number) {
   const clean = list
@@ -210,10 +210,11 @@ export function useAgentSession(options: AgentSessionOptions = {}) {
 
   const refreshBackend = useCallback(async () => {
     try {
-      const [healthData, platformData, sessionData, canvasData, wsData] = await Promise.all([
+      // 先取 session：生產環境第一次造訪會在這一步拿到訪客 id，後續請求才帶得到身份。
+      const sessionData = await fetchSession()
+      const [healthData, platformData, canvasData, wsData] = await Promise.all([
         fetchHealth(),
         fetchPlatform(),
-        fetchSession(),
         loadCanvas ? fetchCanvas().catch(() => null) : Promise.resolve(null),
         fetchWorkspaces().catch(() => ({ workspaces: [] as Workspace[] })),
       ])
@@ -327,6 +328,7 @@ export function useAgentSession(options: AgentSessionOptions = {}) {
   const runMcpInvoke = useCallback(
     async (tool: string, payload?: Record<string, unknown>) => {
       setBusy(true)
+      window.dispatchEvent(new CustomEvent('matrix:tool-invoked', { detail: { tool } }))
       try {
         const result = await invokeMcpTool(tool, payload)
         if (result.ui) {
@@ -411,7 +413,11 @@ export function useAgentSession(options: AgentSessionOptions = {}) {
 
   const rateAssistantReply = useCallback(
     async (logId: string, rating: 'helpful' | 'wrong' | 'partial', comment?: string) => {
-      await submitOpFeedback({ targetEntryId: logId, rating, comment })
+      try {
+        await submitOpFeedback({ targetEntryId: logId, rating, comment })
+      } catch {
+        // /api/ops/* 需管理員 token；訪客的評分只留在本機畫面。
+      }
       setMessages((prev) =>
         prev.map((m) => (m.logId === logId ? { ...m, feedback: rating } : m)),
       )

@@ -7,7 +7,13 @@ import type { PlatformConfig } from '../../shared/platform.ts'
 import type { OpFeedbackRating, OpLogEntry, OpLogSummary } from '../../shared/opsLog.ts'
 import type { ToolTraceEntry } from '../../shared/trace.ts'
 import type { WorkspaceModule } from '../../shared/modulePage.ts'
-import { loadClientSession, sessionHeaders, type ClientSession } from '../session/apiHeaders.ts'
+import {
+  clearClientSession,
+  loadClientSession,
+  saveClientSession,
+  sessionHeaders,
+  type ClientSession,
+} from '../session/apiHeaders.ts'
 import type { McpUiResponse } from '../types/ui.ts'
 
 export type { PlatformConfig }
@@ -23,6 +29,8 @@ export type CatalogItem = {
 export type SessionCapabilities = {
   role: string
   canManageManifest: boolean
+  /** 直接寫 manifest／工作台檔案（需管理員 token）。 */
+  canWriteManifest?: boolean
   canInvite: boolean
   canEditCanvas: boolean
 }
@@ -54,13 +62,12 @@ export type HealthInfo = {
     tagline: string
   }
   session?: {
-    userId: string
-    userName: string
     workspaceId: string
     workspaceName: string
     workspaceSample: boolean
     agentId: string
-  }
+  } | null
+  auth?: { mode: 'dev' | 'guest'; adminTokenConfigured: boolean; isAdmin: boolean; isGuest: boolean }
   openRouterConfigured: boolean
   model: string
   providerOnly: string[]
@@ -97,11 +104,48 @@ export type RunNode = {
   error?: string | null
 }
 
-function apiFetch(input: string, init?: RequestInit) {
+function rawApiFetch(input: string, init?: RequestInit) {
   const headers = new Headers(init?.headers)
   const session = loadClientSession()
   for (const [k, v] of Object.entries(sessionHeaders(session))) headers.set(k, v)
   return fetch(input, { ...init, headers })
+}
+
+let guestPromise: Promise<boolean> | null = null
+
+/**
+ * 生產環境沒有登入：第一次（或訪客過期）收到 401 guest_required 時，
+ * 向伺服器要一個暫時訪客 id 與沙盒工作區。同時多個請求只會建立一位訪客。
+ */
+export function ensureGuestSession(): Promise<boolean> {
+  if (!guestPromise) {
+    guestPromise = (async () => {
+      const res = await fetch('/api/guest/session', { method: 'POST' })
+      if (!res.ok) return false
+      const data = (await res.json()) as { session: ClientSession }
+      clearClientSession()
+      saveClientSession(data.session)
+      return true
+    })().finally(() => {
+      setTimeout(() => {
+        guestPromise = null
+      }, 1000)
+    })
+  }
+  return guestPromise
+}
+
+async function apiFetch(input: string, init?: RequestInit) {
+  const res = await rawApiFetch(input, init)
+  if (res.status !== 401) return res
+  const code = await res
+    .clone()
+    .json()
+    .then((d: { code?: string }) => d.code)
+    .catch(() => undefined)
+  if (code !== 'guest_required') return res
+  if (!(await ensureGuestSession())) return res
+  return rawApiFetch(input, init)
 }
 
 export async function fetchHealth(): Promise<HealthInfo> {
@@ -111,7 +155,7 @@ export async function fetchHealth(): Promise<HealthInfo> {
 }
 
 export async function fetchSession(): Promise<{
-  session: ClientSession & { userName?: string }
+  session: ClientSession & { userName?: string; isGuest?: boolean; isAdmin?: boolean }
   agents: Agent[]
   capabilities: SessionCapabilities
   workspaceMembers: SessionMember[]
@@ -126,6 +170,8 @@ export async function fetchSession(): Promise<{
       workspaceId: data.session.workspace.id,
       agentId: data.session.activeAgentId,
       userName: data.session.user.displayName,
+      isGuest: Boolean(data.session.isGuest),
+      isAdmin: Boolean(data.session.isAdmin),
     },
     agents: data.agents,
     capabilities: data.session.capabilities,
