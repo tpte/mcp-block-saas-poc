@@ -40,10 +40,10 @@ export function SpaceOpsChrome({
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           {spaceProfile === 'cockpit' ? (
             <span
-              className="rounded-full border border-[var(--line)] bg-[var(--bg)] px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[var(--muted)]"
-              title="中欄為 Agent 主畫布，左右為 manifest 固定小工具"
+              className="rounded-md bg-[var(--line)]/30 px-2 py-0.5 text-[10px] text-[var(--muted)]"
+              title="中間為 Agent 主畫布；寬螢幕左右為固定摘要"
             >
-              Cockpit 三欄
+              固定格模式
             </span>
           ) : null}
           {showModuleMenuButton ? (

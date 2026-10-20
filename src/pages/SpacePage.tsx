@@ -84,7 +84,8 @@ export function SpacePage() {
         ? [{ label: 'Bridge 列表', tool: 'bridge:list' }]
         : []
 
-  const showSidebar = session.platform.moduleSidebarEnabled
+  const showSidebar =
+    session.platform.moduleSidebarEnabled && !(spaceProfile === 'cockpit' && cockpit)
 
   const canvasBlock = (
     <BlockCanvas
@@ -149,22 +150,26 @@ export function SpacePage() {
             {spaceProfile === 'cockpit' && cockpit ? (
               <CockpitSpaceView
                 cockpit={cockpit}
-                platform={session.platform}
                 session={{
                   runMcpInvokeToSlot: session.runMcpInvokeToSlot,
                   clientSession: session.clientSession,
                   cockpitSlotState: session.cockpitSlotState,
                 }}
                 onBlockAction={handleBlockAction}
+                onOpenSlotInMain={(slot) => void session.runMcpInvoke(slot.tool, slot.payload)}
                 main={
-                  <div className="px-4 pb-3 pt-2 md:px-6">
-                    <ConversationThread messages={session.messages} busy={session.busy} />
-                    {session.busy && session.trace.length > 0 ? (
-                      <p className="mx-auto mb-3 w-full max-w-6xl text-xs text-[var(--muted)]">
-                        {session.trace[session.trace.length - 1]}
-                      </p>
+                  <div className="flex h-full min-h-0 flex-col">
+                    {session.messages.length > 0 ? (
+                      <div className="max-h-32 shrink-0 overflow-y-auto border-b border-[var(--line)] bg-[var(--bg)]/80 px-4 py-2 md:px-6">
+                        <ConversationThread messages={session.messages} busy={session.busy} />
+                        {session.busy && session.trace.length > 0 ? (
+                          <p className="text-xs text-[var(--muted)]">{session.trace[session.trace.length - 1]}</p>
+                        ) : null}
+                      </div>
                     ) : null}
-                    {session.messages.length > 0 && session.canvas.blocks.length === 0 ? null : canvasBlock}
+                    <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-3 pt-2 md:px-6">
+                      {session.messages.length > 0 && session.canvas.blocks.length === 0 ? null : canvasBlock}
+                    </div>
                   </div>
                 }
               />
