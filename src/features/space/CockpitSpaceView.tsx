@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react'
-import { useState } from 'react'
 import type { CockpitConfig, CockpitSlot } from '../../../shared/cockpit.ts'
 import type { BlockAction } from '../../types/ui'
 import type { CockpitSlotState } from '../session/useAgentSession'
@@ -27,7 +26,6 @@ export function CockpitSpaceView({
   onBlockAction,
   onOpenSlotInMain,
 }: Props) {
-  const [pinsOpen, setPinsOpen] = useState(false)
   const left = cockpit.left ?? []
   const right = cockpit.right ?? []
 
@@ -37,8 +35,6 @@ export function CockpitSpaceView({
     void session.runMcpInvokeToSlot(slot.id, slot.tool, slot.payload)
   }
 
-  const pinCount = left.length + right.length
-
   const pinPanelProps = {
     slotState: session.cockpitSlotState,
     onAction: onBlockAction,
@@ -46,55 +42,32 @@ export function CockpitSpaceView({
     onOpenInMain: onOpenSlotInMain,
   }
 
+  const hasPins = left.length + right.length > 0
+
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
-      {pinCount > 0 ? (
-        <div className="flex shrink-0 items-center justify-end gap-2 border-b border-[var(--line)] bg-[var(--card)]/30 px-3 py-1.5 lg:hidden">
-          <button
-            type="button"
-            className="shrink-0 rounded-md border border-[var(--line)] bg-[var(--card)] px-2 py-1 text-xs"
-            onClick={() => setPinsOpen((o) => !o)}
-          >
-            {pinsOpen ? '關閉' : '固定格'}
-          </button>
-        </div>
+    <div
+      className={
+        hasPins
+          ? 'grid h-full min-h-0 flex-1 grid-cols-2 grid-rows-[auto_minmax(0,1fr)] overflow-hidden lg:grid-cols-[220px_minmax(0,1fr)_220px] lg:grid-rows-1'
+          : 'flex h-full min-h-0 flex-1 flex-col overflow-hidden'
+      }
+    >
+      {left.length ? (
+        <aside className="col-span-1 max-h-44 min-h-0 min-w-0 overflow-hidden border-b border-[var(--line)] lg:col-start-1 lg:row-start-1 lg:max-h-none lg:border-b-0 lg:border-r">
+          <PinnedSlotPanel side="left" slots={left} {...pinPanelProps} />
+        </aside>
       ) : null}
-
+      {right.length ? (
+        <aside className="col-span-1 max-h-44 min-h-0 min-w-0 overflow-hidden border-b border-l border-[var(--line)] lg:col-start-3 lg:row-start-1 lg:max-h-none lg:border-b-0 lg:border-l">
+          <PinnedSlotPanel side="right" slots={right} {...pinPanelProps} />
+        </aside>
+      ) : null}
       <div
-        className={
-          pinCount > 0
-            ? 'grid min-h-0 flex-1 grid-cols-1 overflow-hidden lg:grid-cols-[240px_minmax(0,1fr)_240px]'
-            : 'min-h-0 flex-1 overflow-hidden'
-        }
+        id="cockpit-main"
+        className="col-span-2 min-h-0 min-w-0 overflow-hidden bg-[var(--bg)] lg:col-span-1 lg:col-start-2 lg:row-start-1 lg:border-x lg:border-[var(--line)]"
       >
-        {pinCount > 0 ? (
-          <aside className="hidden min-h-0 min-w-0 overflow-hidden border-[var(--line)] lg:block lg:border-r">
-            <PinnedSlotPanel side="left" slots={left} {...pinPanelProps} />
-          </aside>
-        ) : null}
-
-        <div
-          id="cockpit-main"
-          className="min-h-0 min-w-0 overflow-hidden border-[var(--line)] bg-[var(--bg)] lg:border-x"
-        >
-          {main}
-        </div>
-
-        {pinCount > 0 ? (
-          <aside className="hidden min-h-0 min-w-0 overflow-hidden border-[var(--line)] lg:block lg:border-l">
-            <PinnedSlotPanel side="right" slots={right} {...pinPanelProps} />
-          </aside>
-        ) : null}
+        {main}
       </div>
-
-      {pinsOpen && pinCount > 0 ? (
-        <div className="max-h-[40vh] shrink-0 overflow-y-auto border-t border-[var(--line)] lg:hidden">
-          <div className="grid grid-cols-1 gap-2 p-2 sm:grid-cols-2">
-            {left.length ? <PinnedSlotPanel side="left" slots={left} {...pinPanelProps} /> : null}
-            {right.length ? <PinnedSlotPanel side="right" slots={right} {...pinPanelProps} /> : null}
-          </div>
-        </div>
-      ) : null}
     </div>
   )
 }

@@ -49,6 +49,11 @@ export function SpacePage() {
     reloadModules()
   }, [wsId, reloadCatalog, reloadModules])
 
+  useEffect(() => {
+    session.setMainCanvasReplace(spaceProfile === 'cockpit' && Boolean(cockpit))
+    return () => session.setMainCanvasReplace(false)
+  }, [spaceProfile, cockpit, session.setMainCanvasReplace])
+
   const handleBlockAction = (action: BlockAction) => {
     void session.runMcpInvoke(action.mcpTool, action.payload)
   }

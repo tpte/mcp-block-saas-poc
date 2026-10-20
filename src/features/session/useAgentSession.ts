@@ -134,6 +134,7 @@ export function useAgentSession(options: AgentSessionOptions = {}) {
   const busyRef = useRef(false)
   const canvasRevisionRef = useRef(1)
   const mergeModeRef = useRef<'merge' | 'replace'>('merge')
+  const mainCanvasReplaceRef = useRef(false)
   const messagesRef = useRef(messages)
   const traceRef = useRef(trace)
 
@@ -330,7 +331,8 @@ export function useAgentSession(options: AgentSessionOptions = {}) {
         const result = await invokeMcpTool(tool, payload)
         if (result.ui) {
           setCanvas((prev) => {
-            const next = applyUi(prev, result.ui)
+            const base = mainCanvasReplaceRef.current ? { ...EMPTY_CANVAS } : prev
+            const next = applyUi(base, result.ui)
             void persistCanvas(next)
             return loadCanvas ? next : prev
           })
@@ -381,7 +383,7 @@ export function useAgentSession(options: AgentSessionOptions = {}) {
         setLastProvider(result.provider)
         if (result.ui) {
           setCanvas((prev) => {
-            const base = result.replaceCanvas ? { ...EMPTY_CANVAS } : prev
+            const base = result.replaceCanvas || mainCanvasReplaceRef.current ? { ...EMPTY_CANVAS } : prev
             const next = applyUi(base, result.ui)
             void persistCanvas(next)
             return loadCanvas ? next : prev
@@ -474,6 +476,10 @@ export function useAgentSession(options: AgentSessionOptions = {}) {
     [refreshBackend],
   )
 
+  const setMainCanvasReplace = useCallback((on: boolean) => {
+    mainCanvasReplaceRef.current = on
+  }, [])
+
   const showFlash = useCallback((text: string, variant: 'error' | 'ok' = 'error') => {
     setFlash({ text, variant })
   }, [])
@@ -553,6 +559,7 @@ export function useAgentSession(options: AgentSessionOptions = {}) {
     focusAdjacentBlock,
     sendMessage,
     runMcpInvoke,
+    setMainCanvasReplace,
     runMcpInvokeToSlot,
     cockpitSlotState,
     runCatalogItem,
