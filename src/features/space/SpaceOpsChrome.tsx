@@ -69,7 +69,7 @@ export function SpaceOpsChrome({
           ) : null}
         </div>
         <Button type="button" size="sm" variant="ghost" className="text-xs" onClick={onOpenStudio}>
-          Studio
+          工作台
         </Button>
       </div>
       {showPills ? <ModulePillBar items={catalogItems} onSelect={onRunCatalogItem} /> : null}

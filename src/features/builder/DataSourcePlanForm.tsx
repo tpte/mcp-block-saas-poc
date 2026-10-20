@@ -12,7 +12,7 @@ const TYPES = [
   { value: 'postgres', label: 'PostgreSQL（正式環境常用）' },
   { value: 'supabase', label: 'Supabase' },
   { value: 'sqlite', label: 'SQLite（試用／少量資料）' },
-  { value: 'http_api', label: 'HTTP API（資料在別的系统）' },
+  { value: 'http_api', label: 'HTTP API（資料在別的系統）' },
 ] as const
 
 type Props = {

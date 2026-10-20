@@ -23,11 +23,14 @@ export function StudioPage() {
   const [searchParams] = useSearchParams()
   const session = useAgentSessionContext()
   const isNarrow = useMediaQuery('(max-width: 767px)')
-  const [section, setSection] = useState<StudioSection>('builder')
-  const [mobileToolTab, setMobileToolTab] = useState<WorkspaceToolTab>('builder')
+  // 開發者工作台預設進「工作台」（manifest／Diff）；資料源計畫只在「打造後台」精靈裡。
+  const defaultSection: StudioSection = slug === 'personal' ? 'workbench' : 'builder'
+  const [section, setSection] = useState<StudioSection>(defaultSection)
+  const [mobileToolTab, setMobileToolTab] = useState<WorkspaceToolTab>(defaultSection)
   const [debugOpen, setDebugOpen] = useState(false)
   const { reload: reloadCatalog } = useModuleCatalog(session.clientSession.workspaceId)
   const canEditManifest = session.capabilities.canManageManifest
+  const canWriteManifest = session.capabilities.canWriteManifest ?? canEditManifest
 
   useEffect(() => {
     const focus = parseStudioFocus(searchParams.get('focus'))
@@ -39,14 +42,14 @@ export function StudioPage() {
   useEffect(() => {
     const ws = session.clientSession.workspaceId
     const key = `matrix-builder-onboard-${ws}`
-    if (localStorage.getItem(key) === 'done') return
+    if (slug === 'personal' || localStorage.getItem(key) === 'done') return
     void fetchBuilderSetupContext().then(({ context }) => {
       if (context.dataSourceCount === 0 || context.gaps.length > 0) {
         session.showFlash('可以先接上資料，再讓 Agent 畫出畫面', 'ok')
       }
       localStorage.setItem(key, 'done')
     })
-  }, [session.clientSession.workspaceId, session.showFlash])
+  }, [slug, session.clientSession.workspaceId, session.showFlash])
 
   const builderPanel = (
     <BuilderHubPanel
@@ -72,8 +75,8 @@ export function StudioPage() {
       ) : null}
       <div className="flex shrink-0 items-center justify-between border-b border-[var(--line)] px-4 py-2">
         <div>
-          <p className="text-sm font-semibold">Studio</p>
-          <p className="text-xs text-[var(--muted)]">打造後台、地圖、manifest 工作台</p>
+          <p className="text-sm font-semibold">工作區設定</p>
+          <p className="text-xs text-[var(--muted)]">工作台：manifest／Diff／Git（開發者）· 打造後台：引導式精靈 · 地圖</p>
         </div>
         <div className="flex items-center gap-3">
           <button
@@ -84,7 +87,7 @@ export function StudioPage() {
             {debugOpen ? '隱藏除錯' : '除錯'}
           </button>
           <Link to={`/w/${slug}`} className="text-xs text-cyan-700 hover:underline dark:text-cyan-400">
-            ← 回到 SPACE
+            ← 回到工作區
           </Link>
         </div>
       </div>
@@ -109,7 +112,7 @@ export function StudioPage() {
                 open={mobileToolTab === 'workbench'}
                 embedded
                 onToggle={() => setMobileToolTab(null)}
-                canEdit={canEditManifest}
+                canEdit={canWriteManifest}
                 onSaved={() => {
                   void session.refreshBackend()
                   reloadCatalog()
@@ -137,7 +140,7 @@ export function StudioPage() {
                 open
                 embedded
                 onToggle={() => setSection('workbench')}
-                canEdit={canEditManifest}
+                canEdit={canWriteManifest}
                 onSaved={() => {
                   void session.refreshBackend()
                   reloadCatalog()

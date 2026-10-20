@@ -11,6 +11,7 @@ import { ModuleSidebar } from '../features/module/ModuleSidebar'
 import { useModuleCatalog } from '../features/module/useModuleCatalog'
 import { useWorkspaceModules } from '../features/module/useWorkspaceModules'
 import { IdeSpaceView } from '../features/space/IdeSpaceView'
+import { DevOnboardingChecklist } from '../features/space/DevOnboardingChecklist'
 import { SpaceOpsChrome, type QuickOp } from '../features/space/SpaceOpsChrome'
 import { useAgentSessionContext } from '../features/session/AgentSessionContext'
 import type { BlockAction, UiBlock } from '../types/ui'
@@ -64,7 +65,7 @@ export function SpacePage() {
         const { items } = await fetchMcpCatalog(moduleId)
         const pick = items[0]
         if (!pick) {
-          session.showFlash('此模組尚無可用操作，請到 Studio 啟用工具', 'error')
+          session.showFlash('此模組尚無可用操作，請到「打造後台」勾選模組', 'error')
           return
         }
         session.runCatalogItem(pick)
@@ -75,7 +76,7 @@ export function SpacePage() {
     [session],
   )
 
-  const openStudio = () => navigate(`/w/${slug}/studio`)
+  const openStudio = () => navigate(`/w/${slug}/studio?focus=workbench`)
   const openBuilder = () => navigate(`/w/${slug}/studio?focus=builder`)
   const openPalette = () => {
     window.dispatchEvent(new CustomEvent('matrix:open-command-palette'))
@@ -183,6 +184,14 @@ export function SpacePage() {
               />
             ) : (
               <>
+                {slug === 'personal' ? (
+                  <DevOnboardingChecklist
+                    workspaceId={wsId}
+                    onShowMounts={() => void session.runMcpInvoke('bridge:list')}
+                    onOpenPalette={openPalette}
+                    onOpenModulePick={openBuilder}
+                  />
+                ) : null}
                 <ConversationThread messages={session.messages} busy={session.busy} />
                 {session.busy && session.trace.length > 0 ? (
                   <p className="mx-auto mb-3 w-full max-w-6xl text-xs text-[var(--muted)]">
