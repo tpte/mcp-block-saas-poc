@@ -36,7 +36,7 @@ export function SpaceOpsChrome({
   const showQuickOps = spaceProfile !== 'cockpit' && quickOps.length > 0
 
   return (
-    <>
+    <div className="shrink-0">
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-[var(--line)] bg-[var(--card)]/30 px-3 py-2 md:px-4">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           {spaceProfile === 'cockpit' ? (
@@ -81,6 +81,6 @@ export function SpaceOpsChrome({
         </Button>
       </div>
       {showPills ? <ModulePillBar items={catalogItems} onSelect={onRunCatalogItem} /> : null}
-    </>
+    </div>
   )
 }

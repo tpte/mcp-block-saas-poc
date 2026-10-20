@@ -113,7 +113,7 @@ export function SpacePage() {
   )
 
   return (
-    <div className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden">
+    <div className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)] overflow-hidden">
       <SpaceOpsChrome
         platform={session.platform}
         catalogItems={catalogItems}

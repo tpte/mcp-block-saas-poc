@@ -462,6 +462,7 @@ function load(): DbShape {
   if (ensureCompanyOpsManifest(cache)) {
     /* manifest only */
   }
+  if (dedupeWorkspaces(cache)) persist()
   return cache
 }
 
@@ -483,10 +484,27 @@ export function getMemberRole(workspaceId: string, userId: string): WorkspaceRol
   return m?.role ?? null
 }
 
+function dedupeWorkspaces(db: DbShape): boolean {
+  const seen = new Set<string>()
+  const next = db.workspaces.filter((w) => {
+    if (seen.has(w.id)) return false
+    seen.add(w.id)
+    return true
+  })
+  if (next.length === db.workspaces.length) return false
+  db.workspaces = next
+  return true
+}
+
 export function listWorkspacesForUser(userId: string) {
   const db = load()
   const ids = new Set(db.workspaceMembers.filter((m) => m.userId === userId).map((m) => m.workspaceId))
-  return db.workspaces.filter((w) => ids.has(w.id))
+  const seen = new Set<string>()
+  return db.workspaces.filter((w) => {
+    if (!ids.has(w.id) || seen.has(w.id)) return false
+    seen.add(w.id)
+    return true
+  })
 }
 
 export function createWorkspace(input: { name: string; slug: string; ownerUserId: string }) {
