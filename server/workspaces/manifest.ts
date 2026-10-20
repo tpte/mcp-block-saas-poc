@@ -26,6 +26,7 @@ function upgradeCompanyCockpitManifest(workspaceId: string, manifest: WorkspaceM
   return next
 }
 import { syncInstancesFromCatalog } from './moduleRegistry.ts'
+import { LEGACY_PRODUCT_SUBTITLES, PRODUCT_SUBTITLE } from '../../shared/product.ts'
 
 export function defaultManifest(workspaceId: string, displayName: string): WorkspaceManifest {
   const platform = getWorkspacePlatform(workspaceId)
@@ -53,6 +54,11 @@ export function loadManifest(workspaceId: string, displayName: string): Workspac
     return m
   }
   const parsed = syncInstancesFromCatalog(JSON.parse(raw.toString()) as WorkspaceManifest)
+  if (LEGACY_PRODUCT_SUBTITLES.includes(parsed.ui?.platform?.subtitle ?? '')) {
+    // 舊定位文案 → 新主標（不記 revision，僅文案遷移）。
+    parsed.ui.platform = { ...parsed.ui.platform, subtitle: PRODUCT_SUBTITLE }
+    saveManifest(workspaceId, parsed, { skipHistory: true })
+  }
   return upgradeCompanyCockpitManifest(workspaceId, parsed)
 }
 
