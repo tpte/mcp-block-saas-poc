@@ -220,7 +220,8 @@ function writeCompanyStarterManifest(workspaceId: string, displayName: string, p
     ui: {
       ...tpl.ui,
       platform: { ...tpl.ui.platform, ...platform, modulePillsEnabled: true },
-      spaceProfile: 'admin' as const,
+      spaceProfile: 'cockpit' as const,
+      cockpit: tpl.ui.cockpit,
     },
   }
   storagePut(workspaceId, MANIFEST_FILENAME, JSON.stringify(manifest, null, 2))
@@ -237,12 +238,14 @@ function ensureCompanyOpsManifest(db: DbShape): boolean {
   }
   try {
     const raw = JSON.parse(readFileSync(path, 'utf8')) as {
-      ui?: { spaceProfile?: string }
+      ui?: { spaceProfile?: string; cockpit?: unknown }
       modules?: { enabledCatalogIds?: string[] }
       revision?: number
     }
     const ids = raw.modules?.enabledCatalogIds?.length ?? 0
-    if (raw.ui?.spaceProfile === 'admin' && ids >= 4) return false
+    const hasCockpit =
+      raw.ui?.spaceProfile === 'cockpit' && raw.ui?.cockpit != null
+    if (hasCockpit && ids >= 4) return false
     const tpl = WORKSPACE_TEMPLATES['company-starter'].manifest
     const next = {
       ...tpl,
@@ -251,7 +254,8 @@ function ensureCompanyOpsManifest(db: DbShape): boolean {
       ui: {
         ...tpl.ui,
         platform: { ...tpl.ui.platform, ...(plat ?? {}), modulePillsEnabled: true },
-        spaceProfile: 'admin' as const,
+        spaceProfile: 'cockpit' as const,
+        cockpit: tpl.ui.cockpit,
       },
     }
     writeFileSync(path, JSON.stringify(next, null, 2), 'utf8')

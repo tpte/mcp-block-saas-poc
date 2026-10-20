@@ -251,7 +251,8 @@ ${evidence ? `\n參考資料：\n${evidence}` : ''}`
 繁中，不要用 markdown。`
   }
   return `${systemExtra}
-使用者要看一份工作區資料。只呼叫一個對應的資料工具，再用 ${COMPOSE_TOOL} 畫上畫面。
+使用者要看一份工作區資料。優先呼叫對應的 hr:、finance:、support:、analytics: 等資料工具（勿只用文字回答），再用 ${COMPOSE_TOOL} 畫上畫面。
+需要開啟 Studio 或 SPACE 時可呼叫 workspace:navigate。
 不要提 Skill、資料源或打造後台，不要一次呼叫多個報表。
 繁中，不要用 markdown。`
 }

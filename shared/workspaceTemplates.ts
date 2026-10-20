@@ -1,3 +1,4 @@
+import { DEFAULT_COMPANY_COCKPIT } from './cockpit.ts'
 import type { PlatformConfig } from './platform.ts'
 import { DEFAULT_LAYOUT_PREFERENCES } from './platform.ts'
 import type { WorkspaceManifest } from './workspaceManifest.ts'
@@ -86,7 +87,8 @@ export const WORKSPACE_TEMPLATES: Record<WorkspaceTemplateId, WorkspaceTemplate>
       ],
       ui: {
         ...baseUi,
-        spaceProfile: 'admin',
+        spaceProfile: 'cockpit',
+        cockpit: DEFAULT_COMPANY_COCKPIT,
         platform: {
           ...defaultPlatform(),
           title: '公司後台',

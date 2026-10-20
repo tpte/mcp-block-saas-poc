@@ -16,7 +16,8 @@
     "verify:browser": "node scripts/verify-browser.mjs",
     "verify:copy": "node scripts/verify-product-copy.mjs",
     "verify:space": "node scripts/verify-space-ops.mjs",
-    "verify:all": "npm run verify:copy && npm run verify:space && npm run verify:chat && npm run verify:builder && npm run verify:spa",
+    "verify:cockpit": "node scripts/verify-cockpit.mjs",
+    "verify:all": "npm run verify:copy && npm run verify:space && npm run verify:cockpit && npm run verify:chat && npm run verify:builder && npm run verify:spa",
     "verify:full": "npm run verify:all && npm run verify:browser",
     "preview": "vite preview"
   },

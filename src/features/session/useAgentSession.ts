@@ -30,8 +30,22 @@ import {
   restoreWorkspaceUi,
   snapshotWorkspaceUi,
 } from './workspaceUiCache.ts'
-import type { CanvasPage } from '../../types/ui'
+import type { CanvasPage, McpUiResponse } from '../../types/ui'
+import { toCanvas } from '../../types/ui'
 import { applyUiResponse, EMPTY_CANVAS } from './applyUiResponse'
+import { focusMainCanvasFromUi } from './focusMainCanvas'
+import { matrixNavigateFromTrace } from './matrixNavigate'
+
+export type CockpitSlotState = {
+  loading: boolean
+  error?: string
+  canvas: CanvasPage
+}
+
+function canvasFromUi(ui: McpUiResponse | null): CanvasPage {
+  if (!ui || ui.action !== 'RENDER') return EMPTY_CANVAS
+  return toCanvas(ui.ui)
+}
 
 export type ChatMessage = {
   role: 'user' | 'assistant'
@@ -115,6 +129,7 @@ export function useAgentSession(options: AgentSessionOptions = {}) {
   const [canvasHydrated, setCanvasHydrated] = useState(!loadCanvas)
   const [bootstrapped, setBootstrapped] = useState(false)
   const [workspaceSwitching, setWorkspaceSwitching] = useState(false)
+  const [cockpitSlotState, setCockpitSlotState] = useState<Record<string, CockpitSlotState>>({})
   const composerFocusRef = useRef<ComposerHandle | null>(null)
   const busyRef = useRef(false)
   const canvasRevisionRef = useRef(1)
@@ -256,6 +271,10 @@ export function useAgentSession(options: AgentSessionOptions = {}) {
   }, [clientSession.workspaceId, loadCanvas])
 
   useEffect(() => {
+    setCockpitSlotState({})
+  }, [clientSession.workspaceId])
+
+  useEffect(() => {
     if (busy || offline) return
     const timer = window.setTimeout(() => {
       void refreshSuggestions()
@@ -276,6 +295,34 @@ export function useAgentSession(options: AgentSessionOptions = {}) {
     setTraceLog((prev) => [...prev, ...entries].slice(-TRACE_CAP))
   }, [])
 
+  const runMcpInvokeToSlot = useCallback(
+    async (slotId: string, tool: string, payload?: Record<string, unknown>) => {
+      setCockpitSlotState((prev) => ({
+        ...prev,
+        [slotId]: { loading: true, canvas: prev[slotId]?.canvas ?? EMPTY_CANVAS },
+      }))
+      try {
+        const result = await invokeMcpTool(tool, payload)
+        const nextCanvas = canvasFromUi(result.ui)
+        setCockpitSlotState((prev) => ({
+          ...prev,
+          [slotId]: { loading: false, canvas: nextCanvas },
+        }))
+        appendTrace(result.trace ?? [])
+      } catch (err) {
+        setCockpitSlotState((prev) => ({
+          ...prev,
+          [slotId]: {
+            loading: false,
+            error: err instanceof Error ? err.message : '載入失敗',
+            canvas: EMPTY_CANVAS,
+          },
+        }))
+      }
+    },
+    [appendTrace],
+  )
+
   const runMcpInvoke = useCallback(
     async (tool: string, payload?: Record<string, unknown>) => {
       setBusy(true)
@@ -287,7 +334,9 @@ export function useAgentSession(options: AgentSessionOptions = {}) {
             void persistCanvas(next)
             return loadCanvas ? next : prev
           })
+          focusMainCanvasFromUi(result.ui, setFocusedBlockId)
         }
+        matrixNavigateFromTrace(result.trace)
         if (result.platform) setPlatform(result.platform)
         appendTrace(result.trace ?? [])
         if (result.runId) setLastRunId(result.runId)
@@ -337,7 +386,9 @@ export function useAgentSession(options: AgentSessionOptions = {}) {
             void persistCanvas(next)
             return loadCanvas ? next : prev
           })
+          focusMainCanvasFromUi(result.ui, setFocusedBlockId)
         }
+        matrixNavigateFromTrace(result.trace)
         if (result.platform) setPlatform(result.platform)
         if (result.suggestions?.length) {
           setSuggestions(plainSuggestions(result.suggestions, platform.suggestionCount))
@@ -502,6 +553,8 @@ export function useAgentSession(options: AgentSessionOptions = {}) {
     focusAdjacentBlock,
     sendMessage,
     runMcpInvoke,
+    runMcpInvokeToSlot,
+    cockpitSlotState,
     runCatalogItem,
     agents,
     lastRunId,

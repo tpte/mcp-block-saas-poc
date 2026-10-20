@@ -1,3 +1,4 @@
+import type { CockpitConfig } from './cockpit.ts'
 import type { PlatformConfig } from './platform.ts'
 import type { McpMountRecord } from './domain.ts'
 import type { DefaultCanvasLayout } from './platform.ts'
@@ -21,7 +22,7 @@ export type GitBinding = {
   lastSyncAt?: string
 }
 
-export type SpaceProfile = 'default' | 'admin' | 'ide'
+export type SpaceProfile = 'default' | 'admin' | 'ide' | 'cockpit'
 
 export type DeploymentRecord = {
   id: string
@@ -45,6 +46,7 @@ export type WorkspaceManifest = {
     platform: PlatformConfig
     defaultCanvasLayout: DefaultCanvasLayout
     spaceProfile?: SpaceProfile
+    cockpit?: CockpitConfig
   }
   git?: GitBinding
   deployments: DeploymentRecord[]

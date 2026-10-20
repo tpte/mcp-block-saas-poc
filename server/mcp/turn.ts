@@ -16,7 +16,14 @@ import {
   topicFromTool,
   type PlatformConfig,
 } from './platform.ts'
-import { AGENT_DELEGATE, BRIDGE_CALL, BRIDGE_LIST, COMPOSE_TOOL, PLATFORM_TOOL } from './tools.ts'
+import {
+  AGENT_DELEGATE,
+  BRIDGE_CALL,
+  BRIDGE_LIST,
+  COMPOSE_TOOL,
+  PLATFORM_TOOL,
+  WORKSPACE_NAVIGATE,
+} from './tools.ts'
 import { safeCalc } from '../agent/lane.ts'
 import { webSearch } from '../agent/commonTools.ts'
 import { invokeBuilderTool } from '../builder/handlers.ts'
@@ -84,6 +91,20 @@ async function dispatchToolInner(name: string, payload?: Record<string, unknown>
   }
   if (name === COMPOSE_TOOL) {
     return composeCanvas(payload)
+  }
+  if (name === WORKSPACE_NAVIGATE) {
+    const path = payload?.path === 'studio' ? 'Studio' : 'SPACE'
+    const query = payload?.query && typeof payload.query === 'object' ? payload.query : undefined
+    const hint =
+      query && Object.keys(query).length
+        ? `（${Object.entries(query as Record<string, string>).map(([k, v]) => `${k}=${v}`).join('&')}）`
+        : ''
+    return composeCanvas({
+      blocks: [
+        { kind: 'title', text: `已請前端開啟 ${path}${hint}` },
+        { kind: 'points', items: ['若未自動跳轉，請從上方選單進入。'] },
+      ],
+    })
   }
   if (name === AGENT_DELEGATE) {
     const targetAgentId = String(payload?.targetAgentId ?? '')

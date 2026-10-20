@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import type { CockpitConfig } from '../../shared/cockpit.ts'
 import type { SpaceProfile } from '../../shared/workspaceManifest.ts'
+import { CockpitSpaceView } from '../features/space/CockpitSpaceView'
 import { BlockCanvas } from '../features/canvas/BlockCanvas'
 import { Composer } from '../features/chat/Composer'
 import { ConversationThread } from '../features/chat/ConversationThread'
@@ -19,6 +21,7 @@ export function SpacePage() {
   const session = useAgentSessionContext()
   const [expandedBlock, setExpandedBlock] = useState<UiBlock | null>(null)
   const [spaceProfile, setSpaceProfile] = useState<SpaceProfile>('admin')
+  const [cockpit, setCockpit] = useState<CockpitConfig | null>(null)
   const [mobileModulesOpen, setMobileModulesOpen] = useState(false)
   const top = session.platform.composerPosition === 'top'
   const canEditCanvas = session.capabilities.canEditCanvas
@@ -29,8 +32,14 @@ export function SpacePage() {
 
   useEffect(() => {
     void fetchManifest()
-      .then((d) => setSpaceProfile(d.manifest.ui.spaceProfile ?? 'default'))
-      .catch(() => setSpaceProfile('default'))
+      .then((d) => {
+        setSpaceProfile(d.manifest.ui.spaceProfile ?? 'default')
+        setCockpit(d.manifest.ui.cockpit ?? null)
+      })
+      .catch(() => {
+        setSpaceProfile('default')
+        setCockpit(null)
+      })
   }, [wsId])
 
   useEffect(() => {
@@ -129,20 +138,50 @@ export function SpacePage() {
         <div className="relative grid min-h-0 min-w-0 flex-1 grid-rows-[minmax(0,1fr)_auto] overflow-hidden">
           <main
             className={
-              top ? 'min-h-0 overflow-y-auto px-4 pb-4 pt-44 md:px-6' : 'min-h-0 overflow-y-auto px-4 pb-3 pt-2 md:px-6'
+              spaceProfile === 'cockpit' && cockpit
+                ? 'flex min-h-0 flex-col overflow-hidden p-0'
+                : top
+                  ? 'min-h-0 overflow-y-auto px-4 pb-4 pt-44 md:px-6'
+                  : 'min-h-0 overflow-y-auto px-4 pb-3 pt-2 md:px-6'
             }
           >
-            <ConversationThread messages={session.messages} busy={session.busy} />
-            {session.busy && session.trace.length > 0 ? (
-              <p className="mx-auto mb-3 w-full max-w-6xl text-xs text-[var(--muted)]">
-                {session.trace[session.trace.length - 1]}
-              </p>
-            ) : null}
-            {session.messages.length > 0 && session.canvas.blocks.length === 0
-              ? null
-              : spaceProfile === 'ide'
-                ? <IdeSpaceView slug={slug} canvas={canvasBlock} />
-                : canvasBlock}
+            {spaceProfile === 'cockpit' && cockpit ? (
+              <CockpitSpaceView
+                cockpit={cockpit}
+                platform={session.platform}
+                session={{
+                  runMcpInvokeToSlot: session.runMcpInvokeToSlot,
+                  clientSession: session.clientSession,
+                  cockpitSlotState: session.cockpitSlotState,
+                }}
+                onBlockAction={handleBlockAction}
+                main={
+                  <div className="px-4 pb-3 pt-2 md:px-6">
+                    <ConversationThread messages={session.messages} busy={session.busy} />
+                    {session.busy && session.trace.length > 0 ? (
+                      <p className="mx-auto mb-3 w-full max-w-6xl text-xs text-[var(--muted)]">
+                        {session.trace[session.trace.length - 1]}
+                      </p>
+                    ) : null}
+                    {session.messages.length > 0 && session.canvas.blocks.length === 0 ? null : canvasBlock}
+                  </div>
+                }
+              />
+            ) : (
+              <>
+                <ConversationThread messages={session.messages} busy={session.busy} />
+                {session.busy && session.trace.length > 0 ? (
+                  <p className="mx-auto mb-3 w-full max-w-6xl text-xs text-[var(--muted)]">
+                    {session.trace[session.trace.length - 1]}
+                  </p>
+                ) : null}
+                {session.messages.length > 0 && session.canvas.blocks.length === 0
+                  ? null
+                  : spaceProfile === 'ide'
+                    ? <IdeSpaceView slug={slug} canvas={canvasBlock} />
+                    : canvasBlock}
+              </>
+            )}
           </main>
           <Composer
             ref={session.composerFocusRef}

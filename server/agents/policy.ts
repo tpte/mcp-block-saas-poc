@@ -32,7 +32,7 @@ export function assertToolAllowedForAgent(agent: Agent, tool: string, payload?: 
       throw new PolicyError(`${agent.name} 不可呼叫 MCP：${server}`)
     }
   }
-  if (tool.startsWith('web:') || tool.startsWith('util:')) return
+  if (tool.startsWith('web:') || tool.startsWith('util:') || tool.startsWith('workspace:')) return
   const allowed = agent.policy.allowedToolPrefixes.some((prefix) => tool.startsWith(prefix))
   if (!allowed) throw new PolicyError(`${agent.name} 不可使用 tool：${tool}`)
 }

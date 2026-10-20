@@ -33,7 +33,8 @@ try {
   checks.push(['personal moduleSidebarEnabled', personalPlatform.platform?.moduleSidebarEnabled === true])
 
   const manifest = await get('/api/manifest', companyHeaders)
-  checks.push(['company spaceProfile admin', manifest.manifest?.ui?.spaceProfile === 'admin'])
+  checks.push(['company spaceProfile cockpit', manifest.manifest?.ui?.spaceProfile === 'cockpit'])
+  checks.push(['company cockpit slots', (manifest.manifest?.ui?.cockpit?.left?.length ?? 0) >= 1])
   checks.push(
     ['company enabled modules',
       (manifest.manifest?.modules?.enabledCatalogIds?.length ?? 0) >= 4],

@@ -3,6 +3,7 @@ import { cn } from '../lib/utils'
 import { SpacePage } from '../pages/SpacePage'
 import { StudioPage } from '../pages/StudioPage'
 import { useAgentSessionContext } from '../features/session/AgentSessionContext'
+import { MatrixNavigateListener } from './MatrixNavigateListener'
 import { WorkspaceSlugSync } from './WorkspaceSlugSync'
 
 /** 同一工作區只掛一個殼；SPACE ↔ Studio 交叉淡入，避免整頁卸載閃爍。 */
@@ -15,6 +16,7 @@ export function WorkspaceShell() {
   return (
     <>
       <WorkspaceSlugSync />
+      <MatrixNavigateListener />
       <div
         className={cn(
           'relative flex min-h-0 flex-1 flex-col overflow-hidden transition-opacity duration-200 ease-out',
