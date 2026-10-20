@@ -5,7 +5,7 @@ import { useAgentSessionContext } from '../features/session/AgentSessionContext'
 import { LAST_SPACE_SLUG_KEY } from '../features/session/workspaceUiCache'
 import { WorkspaceCreateForm } from '../features/workspace/WorkspaceCreateForm'
 import { WorkspaceTeamPanel } from '../features/workspace/WorkspaceTeamPanel'
-import { loadAdminToken, saveAdminToken } from '../session/apiHeaders'
+import { clearClientSession, loadAdminToken, saveAdminToken } from '../session/apiHeaders'
 
 export function MePage() {
   const navigate = useNavigate()
@@ -89,6 +89,8 @@ export function MePage() {
             onSubmit={(e) => {
               e.preventDefault()
               saveAdminToken(adminToken)
+              // 換身份：清掉目前（訪客）session，套用 token 後由伺服器回到管理員預設工作區；移除 token 則重新拿訪客沙盒。
+              clearClientSession()
               void session.refreshBackend()
               session.showFlash(adminToken.trim() ? '已套用管理員 token' : '已移除管理員 token', 'ok')
             }}
