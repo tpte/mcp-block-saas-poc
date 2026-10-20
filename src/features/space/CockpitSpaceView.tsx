@@ -74,7 +74,10 @@ export function CockpitSpaceView({
           </aside>
         ) : null}
 
-        <div id="cockpit-main" className="min-h-0 min-w-0 overflow-hidden">
+        <div
+          id="cockpit-main"
+          className="min-h-0 min-w-0 overflow-hidden border-[var(--line)] bg-[var(--bg)] xl:border-x"
+        >
           {main}
         </div>
 

@@ -6,7 +6,7 @@ import { useAgentSessionContext } from '../features/session/AgentSessionContext'
 import { MatrixNavigateListener } from './MatrixNavigateListener'
 import { WorkspaceSlugSync } from './WorkspaceSlugSync'
 
-/** 同一工作區只掛一個殼；SPACE ↔ Studio 交叉淡入，避免整頁卸載閃爍。 */
+/** 同一工作區只掛一個殼；SPACE 與 Studio 只渲染其一，避免透明層疊加造成版面錯亂。 */
 export function WorkspaceShell() {
   const { pathname } = useLocation()
   const isStudio = pathname.includes('/studio')
@@ -19,28 +19,11 @@ export function WorkspaceShell() {
       <MatrixNavigateListener />
       <div
         className={cn(
-          'relative flex min-h-0 flex-1 flex-col overflow-hidden transition-opacity duration-200 ease-out',
-          switching ? 'opacity-80' : 'opacity-100',
+          'flex min-h-0 flex-1 flex-col overflow-hidden transition-opacity duration-150 ease-out',
+          switching ? 'opacity-90' : 'opacity-100',
         )}
       >
-        <div
-          className={cn(
-            'absolute inset-0 flex min-h-0 flex-col transition-opacity duration-200 ease-out',
-            isStudio ? 'pointer-events-none z-0 opacity-0' : 'z-10 opacity-100',
-          )}
-          aria-hidden={isStudio}
-        >
-          <SpacePage />
-        </div>
-        <div
-          className={cn(
-            'absolute inset-0 flex min-h-0 flex-col transition-opacity duration-200 ease-out',
-            isStudio ? 'z-10 opacity-100' : 'pointer-events-none z-0 opacity-0',
-          )}
-          aria-hidden={!isStudio}
-        >
-          <StudioPage />
-        </div>
+        {isStudio ? <StudioPage /> : <SpacePage />}
       </div>
     </>
   )

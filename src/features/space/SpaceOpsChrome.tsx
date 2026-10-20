@@ -33,6 +33,7 @@ export function SpaceOpsChrome({
   spaceProfile,
 }: Props) {
   const showPills = platform.modulePillsEnabled && catalogItems.length > 0
+  const showQuickOps = spaceProfile !== 'cockpit' && quickOps.length > 0
 
   return (
     <>
@@ -51,7 +52,8 @@ export function SpaceOpsChrome({
               模組目錄
             </Button>
           ) : null}
-          {quickOps.map((op) => (
+          {showQuickOps
+            ? quickOps.map((op) => (
             <Button
               key={op.tool}
               type="button"
@@ -62,7 +64,8 @@ export function SpaceOpsChrome({
             >
               {op.label}
             </Button>
-          ))}
+              ))
+            : null}
           <Button type="button" size="sm" variant="outline" className="text-xs" onClick={onOpenCommandPalette}>
             快捷操作
           </Button>

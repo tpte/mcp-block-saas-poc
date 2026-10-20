@@ -105,10 +105,13 @@ export function SpacePage() {
       }
       onDeleteBlock={canEditCanvas ? (id) => void session.removeBlock(id) : undefined}
       opsHints={
-        session.platform.modulePillsEnabled || session.platform.moduleSidebarEnabled
-          ? '上方可點模組分類執行操作，或用快捷操作／⌘K。'
-          : '使用上方「快捷操作」或 ⌘K 執行 HR、財務等模組，不必只靠對話。'
+        spaceProfile === 'cockpit'
+          ? undefined
+          : session.platform.modulePillsEnabled || session.platform.moduleSidebarEnabled
+            ? '上方可點模組分類執行操作，或用快捷操作／⌘K。'
+            : '使用上方「快捷操作」或 ⌘K 執行 HR、財務等模組，不必只靠對話。'
       }
+      emptyVariant={spaceProfile === 'cockpit' && cockpit ? 'cockpit' : 'default'}
     />
   )
 
