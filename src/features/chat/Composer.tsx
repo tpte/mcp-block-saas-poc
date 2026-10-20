@@ -15,13 +15,14 @@ type Props = {
   platform: PlatformConfig
   suggestions: string[]
   busy: boolean
+  compact?: boolean
   onSend: (text: string) => void
 }
 
 const drafts = new Map<string, string>()
 
 export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
-  { scopeId, platform, suggestions, busy, onSend },
+  { scopeId, platform, suggestions, busy, compact = false, onSend },
   ref,
 ) {
   const [input, setInput] = useState(() => drafts.get(scopeId) ?? '')
@@ -51,8 +52,8 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
   return (
     <div
       className={cn(
-        'relative z-30 shrink-0 border-t border-[var(--line)] bg-[var(--bg)] px-4',
-        top ? 'order-first border-b border-t-0 pb-8 pt-2' : 'pb-5 pt-3',
+        'relative z-30 shrink-0 border-t border-[var(--line)] bg-[var(--bg)] px-3',
+        compact ? 'py-2' : top ? 'order-first border-b border-t-0 pb-8 pt-2' : 'pb-5 pt-3',
       )}
     >
       <div className={cn('mx-auto w-full', platform.composerWidth === 'wide' ? 'max-w-4xl' : 'max-w-[720px]')}>

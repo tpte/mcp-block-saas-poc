@@ -11,7 +11,7 @@ type Props = {
 export function WorkspaceDock({ workspaces, activeWorkspaceId, switching, onSelect }: Props) {
   return (
     <nav
-      className="flex shrink-0 gap-2 overflow-x-auto border-t border-[var(--line)] bg-[var(--card)]/80 px-3 py-2 backdrop-blur-md"
+      className="flex shrink-0 gap-2 overflow-x-auto border-t border-[var(--line)] bg-[var(--card)]/80 px-3 py-1 backdrop-blur-md"
       aria-label="工作區"
       aria-busy={switching}
     >

@@ -38,7 +38,7 @@ export function AppShell({
   const pageTitle = showSpaceContext ? platform.title : navMeActive ? '我' : 'MATRIX'
   return (
     <div className="relative flex h-screen flex-col overflow-hidden bg-[var(--bg)] text-[var(--fg)]">
-      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-[var(--line)] px-4 py-2.5 md:px-5">
+      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-[var(--line)] px-4 py-1.5 md:px-5">
         <div className="flex min-w-0 items-center gap-3">
           {onNavHome ? (
             <button

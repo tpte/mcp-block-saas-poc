@@ -48,23 +48,23 @@ export function CockpitSpaceView({
     <div
       className={
         hasPins
-          ? 'grid h-full min-h-0 flex-1 grid-cols-2 grid-rows-[auto_minmax(0,1fr)] overflow-hidden lg:grid-cols-[220px_minmax(0,1fr)_220px] lg:grid-rows-1'
+          ? 'grid h-full min-h-0 flex-1 grid-cols-2 grid-rows-[auto_minmax(0,1fr)] overflow-hidden md:grid-cols-[200px_minmax(0,1fr)_200px] md:grid-rows-1'
           : 'flex h-full min-h-0 flex-1 flex-col overflow-hidden'
       }
     >
       {left.length ? (
-        <aside className="col-span-1 max-h-44 min-h-0 min-w-0 overflow-hidden border-b border-[var(--line)] lg:col-start-1 lg:row-start-1 lg:max-h-none lg:border-b-0 lg:border-r">
+        <aside className="col-span-1 max-h-36 min-h-0 min-w-0 overflow-hidden border-b border-[var(--line)] md:col-start-1 md:row-start-1 md:max-h-none md:border-b-0 md:border-r">
           <PinnedSlotPanel side="left" slots={left} {...pinPanelProps} />
         </aside>
       ) : null}
       {right.length ? (
-        <aside className="col-span-1 max-h-44 min-h-0 min-w-0 overflow-hidden border-b border-l border-[var(--line)] lg:col-start-3 lg:row-start-1 lg:max-h-none lg:border-b-0 lg:border-l">
+        <aside className="col-span-1 max-h-36 min-h-0 min-w-0 overflow-hidden border-b border-l border-[var(--line)] md:col-start-3 md:row-start-1 md:max-h-none md:border-b-0 md:border-l">
           <PinnedSlotPanel side="right" slots={right} {...pinPanelProps} />
         </aside>
       ) : null}
       <div
         id="cockpit-main"
-        className="col-span-2 min-h-0 min-w-0 overflow-hidden bg-[var(--bg)] lg:col-span-1 lg:col-start-2 lg:row-start-1 lg:border-x lg:border-[var(--line)]"
+        className="col-span-2 min-h-0 min-w-0 overflow-hidden bg-[var(--bg)] md:col-span-1 md:col-start-2 md:row-start-1 md:border-x md:border-[var(--line)]"
       >
         {main}
       </div>

@@ -14,14 +14,14 @@ import type { BlockProps } from '../types/ui'
 
 export function ChartBlock({ title, chartType = 'bar', series = [] }: BlockProps) {
   return (
-    <Card>
+    <Card className="flex h-full min-h-64 flex-col">
       {title ? (
-        <CardHeader>
+        <CardHeader className="px-4 py-2">
           <CardTitle>{title}</CardTitle>
         </CardHeader>
       ) : null}
-      <CardContent className={title ? 'pt-0' : undefined}>
-        <div className="h-56 w-full">
+      <CardContent className="min-h-0 flex-1 p-3 pt-2">
+        <div className="h-full min-h-56 w-full">
           <ResponsiveContainer width="100%" height="100%">
             {chartType === 'line' ? (
               <LineChart data={series}>

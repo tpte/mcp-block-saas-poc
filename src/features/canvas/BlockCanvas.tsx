@@ -26,6 +26,8 @@ type Props = {
   opsHints?: string
   /** Cockpit 主格：較精簡的空狀態，不撐滿半個視窗 */
   emptyVariant?: 'default' | 'cockpit'
+  /** 區塊撐滿主格剩餘高度 */
+  fill?: boolean
 }
 
 const widthClass = {
@@ -51,6 +53,7 @@ export function BlockCanvas({
   onDeleteBlock,
   opsHints,
   emptyVariant = 'default',
+  fill = false,
 }: Props) {
   const [localExpanded, setLocalExpanded] = useState<UiBlock | null>(null)
   const overlayBlock = expandedBlock ?? localExpanded
@@ -134,8 +137,10 @@ export function BlockCanvas({
           'mx-auto w-full',
           widthClass[platform.canvasMaxWidth],
           platform.density === 'compact' ? 'gap-2' : 'gap-4',
-          layout === 'grid' && 'grid items-start md:grid-cols-2',
+          fill && 'h-full',
+          layout === 'grid' && 'grid items-stretch md:grid-cols-2',
           layout !== 'grid' && 'flex flex-col',
+          fill && layout === 'grid' && 'min-h-full',
         )}
       >
         {blocks.map((block) => (

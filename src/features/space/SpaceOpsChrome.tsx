@@ -32,21 +32,13 @@ export function SpaceOpsChrome({
   showModuleMenuButton,
   spaceProfile,
 }: Props) {
-  const showPills = platform.modulePillsEnabled && catalogItems.length > 0
+  const showPills = platform.modulePillsEnabled && catalogItems.length > 0 && spaceProfile !== 'cockpit'
   const showQuickOps = spaceProfile !== 'cockpit' && quickOps.length > 0
 
   return (
     <div className="shrink-0">
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-[var(--line)] bg-[var(--card)]/30 px-3 py-2 md:px-4">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
-          {spaceProfile === 'cockpit' ? (
-            <span
-              className="rounded-md bg-[var(--line)]/30 px-2 py-0.5 text-[10px] text-[var(--muted)]"
-              title="中間為 Agent 主畫布；寬螢幕左右為固定摘要"
-            >
-              固定格模式
-            </span>
-          ) : null}
           {showModuleMenuButton ? (
             <Button type="button" size="sm" variant="outline" className="text-xs md:hidden" onClick={onOpenModuleMenu}>
               模組目錄

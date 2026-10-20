@@ -40,7 +40,7 @@ export function BlockShell({ block, expanded, focused, onFocusBlock, onExpand, c
         }
       }}
       className={cn(
-        'rounded-xl outline-none transition-shadow',
+        'h-full rounded-xl outline-none transition-shadow',
         focused ? 'ring-2 ring-[var(--fg)]/30' : 'ring-1 ring-transparent',
         expanded ? 'ring-2 ring-emerald-500/40' : '',
       )}

@@ -89,11 +89,17 @@ export function SpacePage() {
   const showSidebar =
     session.platform.moduleSidebarEnabled && !(spaceProfile === 'cockpit' && cockpit)
 
+  const cockpitOn = spaceProfile === 'cockpit' && Boolean(cockpit)
+  const canvasPlatform = cockpitOn
+    ? { ...session.platform, canvasMaxWidth: 'full' as const, density: 'compact' as const }
+    : session.platform
+
   const canvasBlock = (
     <BlockCanvas
       canvas={session.canvas}
       canvasLoading={!session.canvasHydrated}
-      platform={session.platform}
+      platform={canvasPlatform}
+      fill={cockpitOn}
       suggestions={session.suggestions}
       onAction={handleBlockAction}
       busy={session.busy}
@@ -163,16 +169,13 @@ export function SpacePage() {
                 onBlockAction={handleBlockAction}
                 onOpenSlotInMain={(slot) => void session.runMcpInvoke(slot.tool, slot.payload)}
                 main={
-                  <div className="flex h-full min-h-0 flex-col">
-                    {session.messages.length > 0 ? (
-                      <div className="max-h-32 shrink-0 overflow-y-auto border-b border-[var(--line)] bg-[var(--bg)]/80 px-4 py-2 md:px-6">
-                        <ConversationThread messages={session.messages} busy={session.busy} />
-                        {session.busy && session.trace.length > 0 ? (
-                          <p className="text-xs text-[var(--muted)]">{session.trace[session.trace.length - 1]}</p>
-                        ) : null}
-                      </div>
+                  <div className="flex h-full min-h-0 flex-col p-2">
+                    {session.busy && session.trace.length > 0 ? (
+                      <p className="mb-1 shrink-0 truncate text-xs text-[var(--muted)]">
+                        {session.trace[session.trace.length - 1]}
+                      </p>
                     ) : null}
-                    <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-3 pt-2 md:px-6">
+                    <div className="h-full min-h-0 flex-1 overflow-hidden">
                       {session.messages.length > 0 && session.canvas.blocks.length === 0 ? null : canvasBlock}
                     </div>
                   </div>
@@ -198,9 +201,10 @@ export function SpacePage() {
             ref={session.composerFocusRef}
             scopeId={session.clientSession.workspaceId}
             messages={session.messages}
-            platform={session.platform}
+            platform={cockpitOn ? { ...session.platform, composerWidth: 'wide' } : session.platform}
             suggestions={session.suggestions}
             busy={session.busy}
+            compact={cockpitOn}
             onSend={(text) => void session.sendMessage(text)}
           />
         </div>
