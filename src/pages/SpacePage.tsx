@@ -31,6 +31,8 @@ export function SpacePage() {
   const { modules, loading: modulesLoading, reload: reloadModules } = useWorkspaceModules(wsId)
 
   useEffect(() => {
+    const routeWs = session.workspaces.find((w) => w.slug === slug)
+    if (routeWs && routeWs.id !== wsId) return
     void fetchManifest()
       .then((d) => {
         setSpaceProfile(d.manifest.ui.spaceProfile ?? 'default')
@@ -40,7 +42,7 @@ export function SpacePage() {
         setSpaceProfile('default')
         setCockpit(null)
       })
-  }, [wsId])
+  }, [wsId, slug, session.workspaces])
 
   useEffect(() => {
     reloadCatalog()
@@ -75,14 +77,9 @@ export function SpacePage() {
   }
 
   const quickOps: QuickOp[] =
-    slug === 'company'
-      ? [
-          { label: '本週現金流', tool: 'finance:get_cashflow' },
-          { label: '本月請假', tool: 'hr:get_leave' },
-        ]
-      : slug === 'personal'
-        ? [{ label: 'Bridge 列表', tool: 'bridge:list' }]
-        : []
+    slug === 'personal'
+      ? [{ label: 'Bridge 列表', tool: 'bridge:list' }]
+      : []
 
   const showSidebar =
     session.platform.moduleSidebarEnabled && !(spaceProfile === 'cockpit' && cockpit)

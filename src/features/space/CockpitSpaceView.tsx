@@ -49,7 +49,7 @@ export function CockpitSpaceView({
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
       {pinCount > 0 ? (
-        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[var(--line)] bg-[var(--card)]/30 px-3 py-2 xl:hidden">
+        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[var(--line)] bg-[var(--card)]/30 px-3 py-2 lg:hidden">
           <p className="text-xs text-[var(--muted)]">固定小工具在左右兩側（寬螢幕）或點下方展開</p>
           <button
             type="button"
@@ -64,32 +64,32 @@ export function CockpitSpaceView({
       <div
         className={
           pinCount > 0
-            ? 'grid min-h-0 flex-1 grid-cols-1 overflow-hidden xl:grid-cols-[240px_minmax(0,1fr)_240px]'
+            ? 'grid min-h-0 flex-1 grid-cols-1 overflow-hidden lg:grid-cols-[240px_minmax(0,1fr)_240px]'
             : 'min-h-0 flex-1 overflow-hidden'
         }
       >
         {pinCount > 0 ? (
-          <aside className="hidden min-h-0 min-w-0 overflow-hidden border-[var(--line)] xl:block xl:border-r">
+          <aside className="hidden min-h-0 min-w-0 overflow-hidden border-[var(--line)] lg:block lg:border-r">
             <PinnedSlotPanel side="left" slots={left} {...pinPanelProps} />
           </aside>
         ) : null}
 
         <div
           id="cockpit-main"
-          className="min-h-0 min-w-0 overflow-hidden border-[var(--line)] bg-[var(--bg)] xl:border-x"
+          className="min-h-0 min-w-0 overflow-hidden border-[var(--line)] bg-[var(--bg)] lg:border-x"
         >
           {main}
         </div>
 
         {pinCount > 0 ? (
-          <aside className="hidden min-h-0 min-w-0 overflow-hidden border-[var(--line)] xl:block xl:border-l">
+          <aside className="hidden min-h-0 min-w-0 overflow-hidden border-[var(--line)] lg:block lg:border-l">
             <PinnedSlotPanel side="right" slots={right} {...pinPanelProps} />
           </aside>
         ) : null}
       </div>
 
       {pinsOpen && pinCount > 0 ? (
-        <div className="max-h-[40vh] shrink-0 overflow-y-auto border-t border-[var(--line)] xl:hidden">
+        <div className="max-h-[40vh] shrink-0 overflow-y-auto border-t border-[var(--line)] lg:hidden">
           <div className="grid grid-cols-1 gap-2 p-2 sm:grid-cols-2">
             {left.length ? <PinnedSlotPanel side="left" slots={left} {...pinPanelProps} /> : null}
             {right.length ? <PinnedSlotPanel side="right" slots={right} {...pinPanelProps} /> : null}
