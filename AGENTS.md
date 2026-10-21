@@ -20,5 +20,6 @@
 ## 常用
 
 - 本機：`npm run dev:all`
+- 本機 UI 開 http://localhost:5173（Vite 綁在 `::1`，`127.0.0.1:5173` 會連不上）。API：http://127.0.0.1:8787
 - 生產：https://matrix-mcp-production.up.railway.app
 - 驗收：`npm run verify:all`（chat + builder + SPA + copy）；`verify:full` 含 Playwright；`BASE_URL` 可打 production
