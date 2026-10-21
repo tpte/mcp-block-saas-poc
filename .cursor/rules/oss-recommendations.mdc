@@ -1,0 +1,10 @@
+---
+description: When recommending or comparing open-source projects/libraries, include current GitHub stars with query date and name 1–2 clear picks. Use when choosing dependencies or listing OSS alternatives.
+globs:
+alwaysApply: false
+---
+
+- For each GitHub repo: star count queried now (`gh api repos/<owner>/<repo> --jq .stargazers_count`) plus the query date (YYYY-MM-DD).
+- In comparison tables include a `Star` column; also note last release/commit date and license.
+- Non-GitHub projects: state the source instead of stars.
+- Always end with 1–2 explicit recommendations aligned to a solo-dev context (low maintenance, Railway/Cloudflare-friendly, small footprint).

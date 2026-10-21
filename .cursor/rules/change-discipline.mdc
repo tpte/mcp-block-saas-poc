@@ -1,0 +1,15 @@
+---
+description: Scope and change-size discipline — minimal diffs, confirm destructive work, dry-run scripts
+globs:
+alwaysApply: true
+---
+
+- Review / "take a look" / "why" requests → analyse first; produce the smallest diff or no diff.
+- Delegated tasks → finish to an acceptance-checkable state, not a suggestion.
+- Prefer minimal changes that follow existing conventions. No unrequested refactors, renames, formatting sweeps, or dependency bumps.
+- Do not proactively add new tests or test frameworks; use existing verification scripts. Add a test only when asked or when it is the repo's stated convention.
+- Large, cross-module, destructive, or irreversible operations (mass deletes, `git reset`, moving worktrees, data migrations, prod config): describe the plan and stop for confirmation.
+- Never change system-level settings (default apps/browser, launchd/systemd units, OS preferences) as a side effect of a task.
+- Scripts that act on real data or external systems default to dry-run; execute only when explicitly told to.
+- Do not create README/notes/markdown files unless asked; when findings must persist, write them to the repo's `notes/`.
+- A user's previously rejected option must not be proposed again.

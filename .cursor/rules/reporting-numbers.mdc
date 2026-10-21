@@ -1,0 +1,11 @@
+---
+description: How to report metrics, comparisons, and measurements — percentages with a stated baseline, tables instead of charts. Use when reporting performance, cost, size, or counts.
+globs:
+alwaysApply: false
+---
+
+- Every compared number states its baseline and method: `p95 820 ms → 610 ms（−25.6%，基準 main@<sha>，同一 k6 腳本 3 次平均）`.
+- Lead with the percentage change; keep absolute values (and money amounts) alongside.
+- Present comparisons, trends, and before/after in Markdown tables.
+- Do not generate charts or HTML diagrams unless explicitly requested.
+- Before reporting a speedup/regression, check repeatability (≥3 runs or a stated reason why not) and that the measured work actually ran.

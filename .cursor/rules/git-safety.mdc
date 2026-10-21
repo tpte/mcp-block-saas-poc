@@ -1,0 +1,14 @@
+---
+description: Git and GitHub safety protocol for every agent (commit, push, hooks, config)
+globs:
+alwaysApply: true
+---
+
+- Remote is GitHub only (`gh` / github.com). Do not create, push, or mirror to any other host unless the user explicitly asks.
+- Before each commit run `git status`, `git diff`, and `git log -5` to match the existing message style.
+- Commit once per independently explainable step; message = one zh-TW sentence focused on *why*.
+- Never commit `.env*` (placeholder-only `.env.example` is fine), credentials, tokens, private keys, browser profiles, `*.db` / `*.edb`, `sessions/`, `logs/`, `cache/`, or runtime data dirs.
+- Never change `git config`.
+- Never force push; never rewrite or amend commits that are already pushed.
+- Never use `--no-verify` or skip hooks. If a hook fails, fix the cause and create a new commit instead of amending.
+- Never push directly to `main`/`master`; work on a branch and open a PR, unless the repo's own `AGENTS.md` / `.cursor/rules` explicitly authorises direct delivery.
