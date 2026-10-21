@@ -1,0 +1,10 @@
+---
+description: Conventions for writing or editing Agent Skills (SKILL.md)
+globs: "**/SKILL.md"
+alwaysApply: false
+---
+
+- Skill body prose is Traditional Chinese (Taiwan); code, commands, paths, identifiers, and proper nouns stay English.
+- Frontmatter: `name` (lowercase-hyphen, equals folder name) and `description` ("what it does + when to use it") are required; use `paths` (not legacy `globs`) to scope by file; `disable-model-invocation: true` for slash-command-only skills.
+- Keep `SKILL.md` focused; move long reference material to `references/` and executable helpers to `scripts/`.
+- No secrets, personal data, or machine-specific absolute paths (`/Users/...`, `C:\...`) in skills meant to run in Cloud Agents.

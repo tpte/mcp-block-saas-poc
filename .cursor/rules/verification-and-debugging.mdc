@@ -1,0 +1,13 @@
+---
+description: How to verify work and debug — exhaust automated diagnosis, run real commands, deterministic browser evidence, stop on blockers. Use when testing, debugging, or before declaring a task done.
+globs:
+alwaysApply: false
+---
+
+- This is a real environment: run the commands that prove the change works; do not stop at advice.
+- When a command fails, try another approach (different tool, flag, or path) before giving up; report what you tried.
+- Debugging: exhaust automated diagnosis — logs, backups/diffs, source code, reproducing scripts. If a remote/staging/prod endpoint is available, verify against it yourself. Do not hand back a list of manual steps.
+- If the user truly must act, state it once, completely, in one place.
+- Browser / UI verification: prefer deterministic evidence over screenshots — have the page expose state in the DOM and read it with headless Chrome `--dump-dom` or Playwright assertions; screenshots are supplementary.
+- Login, 2FA, captcha, or permission denied → stop and report: current page, goal, blocker, suggested next step. Do not retry the same approach repeatedly without new evidence.
+- Never claim a check passed unless you ran it; mark unrun checks as "未執行" with the reason.

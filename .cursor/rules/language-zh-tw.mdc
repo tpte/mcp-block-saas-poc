@@ -1,0 +1,11 @@
+---
+description: Output language for commits, PRs, docs and user-facing text — Traditional Chinese (Taiwan) with English technical terms
+globs:
+alwaysApply: true
+---
+
+- Human-facing prose you write (PR titles/bodies, commit messages, review replies, notes) is Traditional Chinese, Taiwan usage (zh-TW). Never Simplified Chinese characters.
+- Keep code, identifiers, file names, paths, commands, error strings, and proper nouns / technical terms in English.
+- Do not invent a Chinese translation to replace an established name (say `SOUL.md`, `middleware`, `Railway`; do not coin a Chinese label for them).
+- Code comments: follow the language already used in that file.
+- No filler, do not restate the request, do not narrate tool steps. Lead with the conclusion, then how it was verified.
